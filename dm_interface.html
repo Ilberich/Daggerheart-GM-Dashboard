@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Mother Tree — GM Interface</title>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0f14;--surface:#141720;--surface2:#1c2030;--surface3:#232840;
+  --border:#2a3050;--border2:#363d5e;
+  --text:#e2e4f0;--text-dim:#c0c4d8;--text-muted:#8890b0;
+  --hope:#6366f1;--hope-dim:#4a4db8;--hope-glow:rgba(99,102,241,.35);
+  --fear:#e05a6a;--fear-dim:#a83040;--fear-glow:rgba(224,90,106,.35);
+  --gold:#d4a843;--gold-dim:#9a7520;
+  --green:#4caf82;--green-dim:#2d7a55;
+  --hp-color:#e05a6a;--stress-color:#6366f1;
+  --sidebar-w:400px;
+  --tabbar-h:48px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimson Pro',Georgia,serif;overflow:hidden;}
+
+/* ═══════════════════════════════════════════════
+   TAB BAR
+═══════════════════════════════════════════════ */
+#tabbar{
+  position:fixed;top:0;left:0;right:0;height:var(--tabbar-h);
+  background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:stretch;z-index:200;
+  overflow-x:auto;overflow-y:hidden;
+  scrollbar-width:none;
+}
+#tabbar::-webkit-scrollbar{display:none;}
+
+.tab{
+  display:flex;align-items:center;gap:7px;
+  padding:0 16px;border-right:1px solid var(--border);
+  cursor:pointer;font-size:13px;font-weight:600;
+  color:var(--text-muted);letter-spacing:.03em;
+  white-space:nowrap;min-width:0;position:relative;
+  transition:color .15s,background .15s;
+  font-family:'Crimson Pro',serif;
+  user-select:none;flex-shrink:0;
+}
+.tab:hover{color:var(--text-dim);background:var(--surface2);}
+.tab.active{
+  color:var(--text);background:var(--bg);
+  border-bottom:2px solid var(--hope);
+  margin-bottom:-1px;
+}
+.tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;background:var(--bg);}
+.tab-icon{font-size:14px;flex-shrink:0;}
+.tab-title{max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+.tab-close{
+  width:18px;height:18px;border-radius:50%;border:none;
+  background:transparent;color:var(--text-muted);font-size:13px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;flex-shrink:0;line-height:1;
+  padding:0;
+}
+.tab-close:hover{background:rgba(224,90,106,.2);color:var(--fear);}
+
+/* Upload button */
+#tab-upload{
+  display:flex;align-items:center;gap:6px;padding:0 14px;
+  cursor:pointer;color:var(--text-muted);font-size:12px;
+  border-right:1px solid var(--border);transition:all .15s;
+  font-family:'Crimson Pro',serif;white-space:nowrap;flex-shrink:0;
+}
+#tab-upload:hover{color:var(--gold);background:rgba(212,168,67,.06);}
+#tab-upload-input{display:none;}
+
+/* GM title badge */
+#gm-badge{
+  margin-left:auto;padding:0 18px;display:flex;align-items:center;gap:8px;
+  border-left:1px solid var(--border);flex-shrink:0;
+}
+#gm-badge span{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;color:var(--text-muted);}
+#gm-badge strong{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.1em;color:var(--gold);}
+
+/* ═══════════════════════════════════════════════
+   TAB PANELS
+═══════════════════════════════════════════════ */
+.tab-panel{
+  display:none;position:fixed;
+  top:var(--tabbar-h);left:0;right:0;bottom:0;
+  overflow:hidden;
+}
+.tab-panel.active{display:flex;flex-direction:column;}
+
+/* ═══════════════════════════════════════════════
+   DROP OVERLAY
+═══════════════════════════════════════════════ */
+#drop-overlay{
+  display:none;position:fixed;inset:0;z-index:1000;
+  background:rgba(10,12,18,.92);
+  border:3px dashed var(--hope);
+  flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;pointer-events:none;
+}
+#drop-overlay.active{display:flex;}
+#drop-overlay .drop-icon{font-size:56px;opacity:.7;}
+#drop-overlay .drop-label{font-family:'Cinzel',serif;font-size:22px;letter-spacing:.15em;color:var(--hope);font-weight:600;}
+#drop-overlay .drop-sub{font-size:15px;color:var(--text-muted);}
+
+/* ═══════════════════════════════════════════════
+   MARKDOWN VIEWER
+═══════════════════════════════════════════════ */
+.md-panel{
+  flex:1;overflow-y:auto;
+  padding:40px;
+  background:var(--bg);
+}
+.md-panel::-webkit-scrollbar{width:6px;}
+.md-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+.md-content{
+  max-width:820px;margin:0 auto;
+}
+
+/* Heading styles */
+.md-content h1{
+  font-family:'Cinzel',serif;font-size:32px;font-weight:700;
+  color:var(--text);letter-spacing:.08em;margin-bottom:24px;padding-bottom:12px;
+  border-bottom:1px solid var(--border);line-height:1.3;
+}
+.md-content h2{
+  font-family:'Cinzel',serif;font-size:22px;font-weight:600;
+  color:var(--text-dim);letter-spacing:.06em;margin:32px 0 12px;
+  padding-bottom:6px;border-bottom:1px solid var(--border);
+}
+.md-content h3{
+  font-family:'Cinzel',serif;font-size:16px;font-weight:600;
+  color:var(--gold);letter-spacing:.06em;margin:24px 0 10px;
+  text-transform:uppercase;
+}
+.md-content h4{
+  font-size:16px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;
+}
+
+/* Body text */
+.md-content p{
+  font-size:16px;line-height:1.75;color:var(--text-dim);
+  margin-bottom:14px;
+}
+.md-content strong{color:var(--text);font-weight:700;}
+.md-content em{color:var(--text-dim);font-style:italic;}
+
+/* Lists */
+.md-content ul,.md-content ol{
+  margin:8px 0 16px 20px;
+}
+.md-content li{
+  font-size:16px;line-height:1.7;color:var(--text-dim);margin-bottom:5px;
+}
+.md-content li p{margin-bottom:4px;}
+.md-content ul li::marker{color:var(--hope);}
+.md-content ol li::marker{color:var(--gold);}
+
+/* Nested lists */
+.md-content ul ul,.md-content ol ul{margin:4px 0 4px 20px;}
+.md-content li > ul,.md-content li > ol{margin-bottom:4px;}
+
+/* Inline code */
+.md-content code{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  background:var(--surface3);color:var(--hope);
+  padding:2px 6px;border-radius:4px;border:1px solid var(--border);
+}
+
+/* Code blocks */
+.md-content pre{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:16px;margin:16px 0;overflow-x:auto;
+}
+.md-content pre code{
+  background:transparent;border:none;padding:0;
+  color:var(--text-dim);font-size:13px;line-height:1.6;
+}
+
+/* Blockquotes */
+.md-content blockquote{
+  border-left:3px solid var(--hope);
+  margin:16px 0;padding:10px 16px;
+  background:rgba(99,102,241,.06);border-radius:0 6px 6px 0;
+  font-style:italic;color:var(--text-muted);
+}
+
+/* Horizontal rules */
+.md-content hr{
+  border:none;border-top:1px solid var(--border);margin:28px 0;
+}
+
+/* Tables */
+.md-content table{
+  width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;
+}
+.md-content th{
+  background:var(--surface3);color:var(--text);font-weight:700;
+  padding:8px 12px;text-align:left;border:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.05em;
+}
+.md-content td{
+  padding:7px 12px;border:1px solid var(--border);color:var(--text-dim);
+  vertical-align:top;
+}
+.md-content tr:nth-child(even) td{background:rgba(255,255,255,.02);}
+
+/* Wiki links */
+.wiki-link{
+  color:var(--hope);background:rgba(99,102,241,.1);
+  border:1px solid rgba(99,102,241,.25);
+  border-radius:4px;padding:0 5px;font-size:.93em;
+  display:inline-block;cursor:default;
+  transition:background .15s,border-color .15s;
+}
+.wiki-link:hover{background:rgba(99,102,241,.2);border-color:rgba(99,102,241,.5);}
+
+/* Frontmatter stripped indicator */
+.md-meta{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--text-muted);background:var(--surface2);
+  border:1px solid var(--border);border-radius:6px;
+  padding:6px 12px;margin-bottom:28px;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.md-meta::before{content:'📄';}
+
+/* ═══════════════════════════════════════════════
+   COMBAT TRACKER STYLES (inside tab panel)
+═══════════════════════════════════════════════ */
+#combat-tab-panel{flex-direction:row;}
+
+#sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .3s,min-width .3s,opacity .3s;
+  position:relative;
+}
+#sidebar.collapsed{width:0;min-width:0;opacity:0;pointer-events:none;}
+#sidebar-inner{display:flex;flex-direction:column;height:100%;overflow:hidden;width:var(--sidebar-w);}
+
+#sidebar-toggle{
+  position:absolute;top:9px;left:12px;z-index:50;
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  width:30px;height:30px;border-radius:6px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  transition:background .2s,border-color .2s;
+}
+#sidebar-toggle:hover{background:var(--surface3);border-color:var(--hope);}
+
+.sidebar-header{padding:12px 16px 10px 50px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;}
+.sidebar-header h2{font-size:14px;font-weight:800;color:var(--text);letter-spacing:.07em;text-transform:uppercase;font-family:'Cinzel',serif;}
+
+.bp-panel{background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:10px 12px 6px;flex-shrink:0;}
+.bp-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.bp-label{font-size:13px;color:var(--text-muted);white-space:nowrap;}
+.bp-input{width:52px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;padding:3px 6px;}
+.bp-input:focus{outline:none;border-color:var(--hope);}
+.bp-total{font-size:13px;color:var(--text-muted);}
+.bp-total span{color:var(--gold);font-weight:700;font-family:'JetBrains Mono',monospace;}
+.bp-spent{font-size:13px;color:var(--text-muted);}
+.bp-spent span{font-weight:700;font-family:'JetBrains Mono',monospace;}
+.bp-bar-wrap{background:var(--surface);border-radius:4px;height:6px;overflow:hidden;margin-top:6px;}
+.bp-bar{height:100%;border-radius:4px;background:var(--gold);transition:width .3s;}
+.bp-bar.over{background:var(--fear);}
+
+.cost-legend{padding:4px 12px;flex-shrink:0;}
+.cost-legend-title{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:4px;}
+.cost-items{display:flex;flex-wrap:wrap;gap:4px;}
+.cost-pill{font-size:10px;padding:2px 7px;border-radius:99px;background:var(--surface3);border:1px solid var(--border);color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.cost-pill b{color:var(--gold);}
+
+.filter-row{padding:4px 12px;display:flex;flex-wrap:wrap;gap:4px;flex-shrink:0;}
+.filter-btn{font-size:11px;padding:3px 8px;border-radius:99px;background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;font-family:'Crimson Pro',serif;transition:all .15s;}
+.filter-btn:hover,.filter-btn.active{background:var(--hope);border-color:var(--hope);color:#fff;}
+
+.adv-list{overflow-y:auto;flex:1;padding:4px 8px 16px;}
+.adv-list::-webkit-scrollbar{width:4px;}
+.adv-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.type-group{margin-bottom:8px;}
+.type-header{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);padding:6px 6px 3px;display:flex;align-items:center;gap:6px;}
+.type-header::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.adv-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;transition:border-color .15s;position:relative;overflow:hidden;}
+.adv-card.out-of-budget{opacity:.4;}
+.adv-card:not(.out-of-budget):hover{border-color:var(--border2);}
+.adv-main{display:flex;align-items:stretch;cursor:pointer;}
+.adv-card.out-of-budget .adv-main{cursor:not-allowed;}
+.adv-add-zone{flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:3px;}
+.adv-card:not(.out-of-budget) .adv-add-zone:hover .adv-name{color:var(--hope);}
+.adv-top{display:flex;align-items:center;gap:6px;}
+.adv-name{font-size:14px;font-weight:700;color:var(--text);transition:color .15s;flex:1;}
+.adv-cost-badge{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;padding:1px 6px;border-radius:99px;background:var(--surface3);color:var(--gold);border:1px solid var(--gold-dim);white-space:nowrap;}
+.adv-stats{display:flex;gap:8px;flex-wrap:wrap;}
+.adv-stat{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.adv-stat span{color:var(--text-dim);}
+.adv-atk-line{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.adv-expand-strip{width:30px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:background .15s,color .15s;flex-shrink:0;}
+.adv-expand-strip:hover{background:rgba(212,168,67,.08);color:var(--gold);}
+.adv-expand-strip.open{background:rgba(212,168,67,.1);color:var(--gold);border-left-color:var(--gold-dim);}
+.adv-abilities{display:none;border-top:1px solid var(--border);padding:10px 12px 12px;background:rgba(0,0,0,.25);flex-direction:column;gap:8px;}
+.adv-abilities.open{display:flex;}
+.ability-item{display:flex;flex-direction:column;gap:3px;}
+.ability-header{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.ability-name{font-size:12.5px;font-weight:700;color:var(--text-dim);}
+.ability-tag{font-size:9px;text-transform:uppercase;letter-spacing:.07em;padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-weight:700;flex-shrink:0;}
+.tag-passive{background:rgba(76,175,130,.15);color:#4caf82;border:1px solid rgba(76,175,130,.3);}
+.tag-action{background:rgba(99,102,241,.15);color:#a5a8ff;border:1px solid rgba(99,102,241,.3);}
+.tag-reaction{background:rgba(224,90,106,.15);color:#e05a6a;border:1px solid rgba(224,90,106,.3);}
+.tag-fear{background:rgba(212,168,67,.15);color:var(--gold);border:1px solid rgba(212,168,67,.3);}
+.ability-desc{font-size:11.5px;color:var(--text-muted);line-height:1.6;padding-left:2px;}
+.motives-line{font-size:10.5px;color:var(--text-muted);font-style:italic;border-top:1px solid var(--border);padding-top:6px;margin-top:2px;}
+
+#combat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+#topbar{display:flex;align-items:center;padding:10px 16px 10px 52px;background:var(--surface);border-bottom:1px solid var(--border);gap:12px;flex-shrink:0;}
+#topbar h1{font-size:16px;font-weight:700;letter-spacing:.08em;color:var(--text);flex:1;text-transform:uppercase;font-family:'Cinzel',serif;}
+.topbar-btn{padding:6px 14px;border-radius:8px;border:none;font-family:'Crimson Pro',serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--hope);color:#fff;}
+.btn-primary:hover{background:var(--hope-dim);}
+.btn-danger{background:var(--fear-dim);color:#fff;border:1px solid var(--fear);}
+.btn-danger:hover{background:var(--fear);}
+.btn-add-more{background:transparent;color:var(--gold);border:1px solid var(--gold-dim);}
+.btn-add-more:hover{background:var(--surface3);border-color:var(--gold);}
+.round-badge{font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:4px 12px;color:var(--text-muted);cursor:pointer;transition:border-color .15s;display:flex;align-items:center;gap:6px;}
+.round-badge:hover{border-color:var(--hope);}
+.round-badge span{color:var(--gold);font-weight:700;}
+
+#combat-area{flex:1;overflow-y:auto;padding:16px;}
+#combat-area::-webkit-scrollbar{width:6px;}
+#combat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text-muted);text-align:center;}
+.empty-icon{font-size:48px;opacity:.3;}
+.empty-title{font-size:20px;font-weight:700;color:var(--text-dim);font-family:'Cinzel',serif;}
+.empty-sub{font-size:15px;max-width:340px;line-height:1.5;}
+#encounter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+
+.combat-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;position:relative;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.combat-card{animation:fadeIn .25s ease;}
+.combat-card.defeated{opacity:.4;border-color:var(--border);background:var(--surface);}
+.combat-card.defeated .card-name{text-decoration:line-through;color:var(--text-muted);}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.card-name{font-size:17px;font-weight:800;color:var(--text);line-height:1.2;}
+.card-type-badge{font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:99px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.card-meta{display:flex;gap:10px;flex-wrap:wrap;}
+.card-stat{font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.card-stat span{color:var(--text-dim);}
+.dots-section{display:flex;flex-direction:column;gap:6px;}
+.dots-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:2px;}
+.dots-row{display:flex;flex-wrap:wrap;gap:5px;}
+.dot{width:22px;height:22px;border-radius:50%;border:2px solid;cursor:pointer;transition:background .15s,box-shadow .15s,transform .1s;}
+.dot:hover{transform:scale(1.18);}
+.dot:active{transform:scale(.95);}
+.dot-hp{border-color:var(--hp-color);background:transparent;}
+.dot-hp.marked{background:var(--hp-color);box-shadow:0 0 6px var(--fear-glow);}
+.dot-stress{border-color:var(--stress-color);background:transparent;}
+.dot-stress.marked{background:var(--stress-color);box-shadow:0 0 6px var(--hope-glow);}
+.card-dismiss{position:absolute;top:8px;right:10px;width:22px;height:22px;border-radius:50%;background:transparent;border:1px solid var(--border);color:var(--text-muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;}
+.card-dismiss:hover{background:var(--fear-dim);border-color:var(--fear);color:#fff;}
+.defeated-banner{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:700;color:var(--fear);text-transform:uppercase;letter-spacing:.1em;padding:4px;background:rgba(224,90,106,.08);border-radius:6px;}
+#status-bar{display:flex;align-items:center;padding:8px 16px;background:var(--surface);border-top:1px solid var(--border);gap:16px;font-size:13px;color:var(--text-muted);flex-shrink:0;}
+.status-item{display:flex;align-items:center;gap:5px;}
+.status-item span{color:var(--text);font-weight:700;font-family:'JetBrains Mono',monospace;}
+@keyframes hopePulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}50%{box-shadow:0 0 10px 4px rgba(99,102,241,.45)}}
+.btn-begin{animation:hopePulse 2s ease-in-out infinite;}
+
+/* TYPE COLORS */
+.tc-solo    {background:rgba(224,90,106,.15);color:#e05a6a;border-color:rgba(224,90,106,.4);}
+.tc-bruiser {background:rgba(212,168,67,.15);color:#d4a843;border-color:rgba(212,168,67,.4);}
+.tc-leader  {background:rgba(99,102,241,.18);color:#a5a8ff;border-color:rgba(99,102,241,.4);}
+.tc-ranged  {background:rgba(76,175,130,.15);color:#4caf82;border-color:rgba(76,175,130,.4);}
+.tc-skulk   {background:rgba(120,80,180,.18);color:#c090ff;border-color:rgba(120,80,180,.4);}
+.tc-horde   {background:rgba(200,140,60,.15);color:#e8a450;border-color:rgba(200,140,60,.4);}
+.tc-standard{background:rgba(140,150,180,.15);color:#aab0cc;border-color:rgba(140,150,180,.4);}
+.tc-minion  {background:rgba(100,120,100,.15);color:#88aa88;border-color:rgba(100,120,100,.4);}
+.tc-support {background:rgba(60,160,200,.15);color:#60b8e0;border-color:rgba(60,160,200,.4);}
+.tc-social  {background:rgba(200,100,160,.15);color:#e080b8;border-color:rgba(200,100,160,.4);}
+
+/* ═══════════════════════════════════════════════
+   CUSTOM ADVERSARY MODAL
+═══════════════════════════════════════════════ */
+#custom-modal-bg{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(5,6,10,.88);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;
+}
+#custom-modal-bg.open{display:flex;}
+
+#custom-modal{
+  background:var(--surface);border:1px solid var(--border2);border-radius:14px;
+  width:min(680px,96vw);max-height:90vh;display:flex;flex-direction:column;
+  overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.7);
+}
+.cm-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  background:var(--surface2);flex-shrink:0;
+}
+.cm-title{font-family:'Cinzel',serif;font-size:16px;font-weight:700;letter-spacing:.08em;color:var(--text);}
+.cm-close{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.cm-close:hover{background:var(--fear-dim);border-color:var(--fear);color:#fff;}
+
+.cm-body{overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;flex:1;}
+.cm-body::-webkit-scrollbar{width:4px;}
+.cm-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+.cm-section-title{
+  font-size:10px;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--text-muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace;
+}
+.cm-row{display:flex;gap:10px;flex-wrap:wrap;}
+.cm-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:80px;}
+.cm-field.wide{flex:2;min-width:160px;}
+.cm-field.full{flex:1 1 100%;}
+.cm-label{font-size:11px;color:var(--text-muted);letter-spacing:.05em;}
+.cm-input,.cm-select,.cm-textarea{
+  background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'Crimson Pro',serif;font-size:14px;
+  padding:7px 10px;transition:border-color .15s;width:100%;
+}
+.cm-input:focus,.cm-select:focus,.cm-textarea:focus{outline:none;border-color:var(--hope);}
+.cm-input[type=number]{-moz-appearance:textfield;}
+.cm-input[type=number]::-webkit-inner-spin-button{display:none;}
+.cm-textarea{resize:vertical;min-height:60px;line-height:1.5;}
+.cm-select option{background:var(--surface3);}
+
+/* ability rows */
+.feat-list{display:flex;flex-direction:column;gap:8px;}
+.feat-row{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;display:flex;flex-direction:column;gap:8px;
+  position:relative;
+}
+.feat-row-top{display:flex;gap:8px;align-items:flex-start;}
+.feat-select{width:110px;flex-shrink:0;}
+.feat-name-input{flex:1;}
+.feat-remove{
+  width:26px;height:26px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--text-muted);font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .15s;margin-top:1px;
+}
+.feat-remove:hover{background:var(--fear-dim);border-color:var(--fear);color:#fff;}
+.feat-desc-input{width:100%;}
+
+.cm-add-feat{
+  width:100%;padding:8px;border-radius:6px;border:1px dashed var(--border2);
+  background:transparent;color:var(--text-muted);font-family:'Crimson Pro',serif;
+  font-size:13px;cursor:pointer;transition:all .15s;margin-top:2px;
+}
+.cm-add-feat:hover{border-color:var(--hope);color:var(--hope);background:rgba(99,102,241,.06);}
+
+.cm-footer{
+  padding:14px 20px;border-top:1px solid var(--border);
+  background:var(--surface2);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;
+}
+.cm-btn{padding:8px 20px;border-radius:8px;border:none;font-family:'Crimson Pro',serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;}
+.cm-btn-save{background:var(--hope);color:#fff;}
+.cm-btn-save:hover{background:var(--hope-dim);}
+.cm-btn-cancel{background:var(--surface3);color:var(--text-muted);border:1px solid var(--border);}
+.cm-btn-cancel:hover{color:var(--text);border-color:var(--border2);}
+
+/* custom badge on arsenal cards */
+.custom-pill{
+  font-size:9px;padding:1px 5px;border-radius:4px;
+  background:rgba(76,175,130,.15);color:#4caf82;
+  border:1px solid rgba(76,175,130,.3);
+  font-family:'JetBrains Mono',monospace;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;flex-shrink:0;
+}
+.adv-delete-btn{
+  width:22px;height:100%;border:none;border-left:1px solid var(--border);
+  background:transparent;color:var(--text-muted);font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;flex-shrink:0;
+}
+.adv-delete-btn:hover{background:rgba(224,90,106,.15);color:var(--fear);}
+
+/* create custom button in sidebar */
+.create-custom-btn{
+  margin:0 12px 8px;padding:8px 12px;border-radius:8px;
+  border:1px dashed var(--border2);background:transparent;
+  color:var(--text-muted);font-family:'Crimson Pro',serif;font-size:13px;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;
+  font-weight:600;
+}
+.create-custom-btn:hover{border-color:var(--green);color:var(--green);background:rgba(76,175,130,.06);}
+
+/* edit modal mode */
+#cm-edit-id{display:none;}
+
+/* ═══════════════════════════════════════════════
+   WELCOME / DROP HINT ON NOTES TAB
+═══════════════════════════════════════════════ */
+.md-welcome{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;text-align:center;padding:40px;
+}
+.mw-icon{font-size:52px;opacity:.25;}
+.mw-title{font-family:'Cinzel',serif;font-size:24px;font-weight:600;color:var(--text-dim);letter-spacing:.06em;}
+.mw-sub{font-size:15px;color:var(--text-muted);max-width:400px;line-height:1.6;}
+.mw-btn{
+  margin-top:8px;padding:10px 24px;border-radius:8px;border:1px solid var(--gold-dim);
+  background:transparent;color:var(--gold);font-family:'Crimson Pro',serif;
+  font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;
+}
+.mw-btn:hover{background:rgba(212,168,67,.12);border-color:var(--gold);}
+.hint-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:560px;}
+.hint-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:left;}
+.hint-card .hc-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+.hint-card .hc-val{font-size:13px;color:var(--text-dim);}
+</style>
+</head>
+<body>
+
+<!-- DROP OVERLAY -->
+<div id="drop-overlay">
+  <div class="drop-icon">📜</div>
+  <div class="drop-label">Drop .MD Files Here</div>
+  <div class="drop-sub">Each file will open as a new lore tab</div>
+</div>
+
+<!-- TAB BAR -->
+<div id="tabbar">
+  <div class="tab active" data-tab="combat" onclick="switchTab('combat')">
+    <span class="tab-icon">⚔</span>
+    <span class="tab-title">Combat Tracker</span>
+  </div>
+  <!-- Dynamic tabs inserted here -->
+  <div id="dynamic-tabs"></div>
+
+  <label id="tab-upload" title="Upload .md files to open as lore tabs">
+    <span>＋</span><span>Add Lore Tab</span>
+    <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple onchange="handleFileUpload(this.files)">
+  </label>
+
+  <div id="gm-badge">
+    <span>THE MOTHER TREE</span>
+    <strong>GM INTERFACE</strong>
+  </div>
+</div>
+
+<!-- COMBAT TAB PANEL -->
+<div class="tab-panel active" id="panel-combat">
+  <div id="combat-tab-panel" style="display:flex;flex:1;overflow:hidden;">
+
+    <div id="sidebar">
+      <div id="sidebar-inner">
+        <div class="sidebar-header">
+          <button id="sidebar-toggle" title="Toggle Arsenal" onclick="toggleSidebar()">☰</button>
+          <h2>⚔ Adversary Arsenal</h2>
+        </div>
+        <div class="bp-panel">
+          <div class="bp-row">
+            <span class="bp-label">Players:</span>
+            <input type="number" class="bp-input" id="player-count" value="4" min="1" max="10" onchange="updateBP()">
+            <span class="bp-total">Total: <span id="bp-total">14</span> pts</span>
+          </div>
+          <div class="bp-spent">Used: <span id="bp-spent" style="color:var(--fear)">0</span> · Remaining: <span id="bp-rem" style="color:var(--green)">14</span></div>
+          <div class="bp-bar-wrap"><div class="bp-bar" id="bp-bar" style="width:0%"></div></div>
+        </div>
+        <div class="cost-legend">
+          <div class="cost-legend-title">Battle Point Costs</div>
+          <div class="cost-items">
+            <div class="cost-pill">Minion/Social/Support <b>1pt</b></div>
+            <div class="cost-pill">Horde/Ranged/Skulk/Standard <b>2pt</b></div>
+            <div class="cost-pill">Leader <b>3pt</b></div>
+            <div class="cost-pill">Bruiser <b>4pt</b></div>
+            <div class="cost-pill">Solo <b>5pt</b></div>
+          </div>
+        </div>
+        <div class="filter-row" id="filter-row"></div>
+        <button class="create-custom-btn" onclick="openCustomModal()">
+          <span>✦</span><span>Create Custom Adversary</span>
+        </button>
+        <div class="adv-list" id="adv-list"></div>
+      </div>
+    </div>
+
+    <div id="combat-main">
+      <div id="topbar">
+        <h1>Combat Tracker</h1>
+        <div class="round-badge" id="round-badge" onclick="advanceRound()" title="Click to advance round" style="display:none">Round <span id="round-num">1</span></div>
+        <button class="topbar-btn btn-add-more" id="btn-add-more" onclick="openSidebar()" style="display:none">+ Adversaries</button>
+        <button class="topbar-btn btn-primary btn-begin" id="btn-begin" onclick="beginBattle()">▶ Begin Battle</button>
+        <button class="topbar-btn btn-danger" id="btn-reset" onclick="resetBattle()" style="display:none">↺ Reset</button>
+      </div>
+      <div id="combat-area">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">🗡</div>
+          <div class="empty-title">No Encounter Built</div>
+          <div class="empty-sub">Open the sidebar, browse adversaries, spend your Battle Points, then hit <strong>▶ Begin Battle</strong>.</div>
+        </div>
+        <div id="encounter-grid" style="display:none"></div>
+      </div>
+      <div id="status-bar">
+        <div class="status-item">Active: <span id="status-active">0</span></div>
+        <div class="status-item">Defeated: <span id="status-defeated">0</span></div>
+        <div class="status-item">Budget remaining: <span id="status-bp">14</span> pts</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Dynamic tab panels injected here -->
+<div id="dynamic-panels"></div>
+
+<!-- ═══════════════════════════════════════════════
+     CUSTOM ADVERSARY MODAL
+═══════════════════════════════════════════════ -->
+<div id="custom-modal-bg">
+  <div id="custom-modal">
+    <div class="cm-header">
+      <span class="cm-title" id="cm-modal-title">✦ Create Custom Adversary</span>
+      <button type="button" class="cm-close" id="cm-close-btn">✕</button>
+    </div>
+    <div class="cm-body">
+
+      <!-- identity -->
+      <div>
+        <div class="cm-section-title">Identity</div>
+        <div class="cm-row">
+          <div class="cm-field wide">
+            <label class="cm-label">Name *</label>
+            <input class="cm-input" id="cm-name" placeholder="e.g. Rust Crawler" maxlength="60">
+          </div>
+          <div class="cm-field">
+            <label class="cm-label">Type *</label>
+            <select class="cm-select" id="cm-type">
+              <option value="solo">Solo (5pt)</option>
+              <option value="bruiser">Bruiser (4pt)</option>
+              <option value="leader">Leader (3pt)</option>
+              <option value="horde">Horde (2pt)</option>
+              <option value="ranged">Ranged (2pt)</option>
+              <option value="skulk">Skulk (2pt)</option>
+              <option value="standard" selected>Standard (2pt)</option>
+              <option value="minion">Minion (1pt)</option>
+              <option value="support">Support (1pt)</option>
+              <option value="social">Social (1pt)</option>
+            </select>
+          </div>
+        </div>
+        <div class="cm-row" style="margin-top:8px">
+          <div class="cm-field full">
+            <label class="cm-label">Description / Motives</label>
+            <input class="cm-input" id="cm-motives" placeholder="e.g. Scavenge, ambush, drag into dark">
+          </div>
+        </div>
+      </div>
+
+      <!-- stats -->
+      <div>
+        <div class="cm-section-title">Stats</div>
+        <div class="cm-row">
+          <div class="cm-field"><label class="cm-label">Difficulty</label><input class="cm-input" id="cm-dc" type="number" placeholder="12" min="1" max="30"></div>
+          <div class="cm-field"><label class="cm-label">HP</label><input class="cm-input" id="cm-hp" type="number" placeholder="4" min="1" max="20"></div>
+          <div class="cm-field"><label class="cm-label">Stress</label><input class="cm-input" id="cm-st" type="number" placeholder="3" min="1" max="10"></div>
+          <div class="cm-field"><label class="cm-label">Major THR</label><input class="cm-input" id="cm-maj" type="number" placeholder="6" min="1"></div>
+          <div class="cm-field"><label class="cm-label">Severe THR</label><input class="cm-input" id="cm-sev" type="number" placeholder="12" min="1"></div>
+        </div>
+      </div>
+
+      <!-- attack -->
+      <div>
+        <div class="cm-section-title">Attack</div>
+        <div class="cm-row">
+          <div class="cm-field"><label class="cm-label">ATK Bonus</label><input class="cm-input" id="cm-atk" placeholder="+2" maxlength="6"></div>
+          <div class="cm-field wide"><label class="cm-label">Weapon · Range</label><input class="cm-input" id="cm-wpn" placeholder="e.g. Rusted Claws · Melee"></div>
+          <div class="cm-field"><label class="cm-label">Damage</label><input class="cm-input" id="cm-dmg" placeholder="e.g. 1d8+3 phy"></div>
+        </div>
+      </div>
+
+      <!-- abilities -->
+      <div>
+        <div class="cm-section-title">Abilities</div>
+        <div class="feat-list" id="cm-feat-list"></div>
+        <button type="button" class="cm-add-feat" id="cm-add-feat-btn">＋ Add Ability</button>
+      </div>
+
+    </div>
+    <div class="cm-footer">
+      <input type="hidden" id="cm-edit-id">
+      <button type="button" class="cm-btn cm-btn-cancel" id="cm-cancel-btn">Cancel</button>
+      <button type="button" class="cm-btn cm-btn-save" id="cm-save-btn">Save Adversary</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// TAB SYSTEM
+// ═══════════════════════════════════════════════════════════
+let activeTab='combat';
+let tabCounter=0;
+
+function switchTab(id){
+  activeTab=id;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));
+}
+
+function addTab(title,html,icon='📜'){
+  const id='tab-'+(++tabCounter);
+  // Tab button
+  const tab=document.createElement('div');
+  tab.className='tab';
+  tab.dataset.tab=id;
+  tab.innerHTML=`<span class="tab-icon">${icon}</span><span class="tab-title" title="${title}">${title}</span><button class="tab-close" onclick="closeTab('${id}',event)">×</button>`;
+  tab.addEventListener('click',()=>switchTab(id));
+  document.getElementById('dynamic-tabs').appendChild(tab);
+  // Panel
+  const panel=document.createElement('div');
+  panel.className='tab-panel';
+  panel.id='panel-'+id;
+  panel.innerHTML=`<div class="md-panel"><div class="md-content">${html}</div></div>`;
+  document.getElementById('dynamic-panels').appendChild(panel);
+  switchTab(id);
+  return id;
+}
+
+function closeTab(id,e){
+  e.stopPropagation();
+  document.querySelector(`.tab[data-tab="${id}"]`)?.remove();
+  document.getElementById('panel-'+id)?.remove();
+  if(activeTab===id)switchTab('combat');
+}
+
+// ═══════════════════════════════════════════════════════════
+// FILE UPLOAD + MARKDOWN RENDERING
+// ═══════════════════════════════════════════════════════════
+function handleFileUpload(files){
+  [...files].forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>openMdFile(f.name,e.target.result);
+    reader.readAsText(f);
+  });
+  // Reset input so same file can be re-uploaded
+  document.getElementById('tab-upload-input').value='';
+}
+
+function openMdFile(filename,raw){
+  const title=filename.replace(/\.(md|markdown)$/i,'').replace(/_/g,' ');
+  const html=renderMd(raw,title);
+  // Pick icon based on filename content
+  const lower=title.toLowerCase();
+  const icon=lower.includes('combat')||lower.includes('encounter')?'⚔'
+    :lower.includes('faction')||lower.includes('guild')?'⚑'
+    :lower.includes('npc')||lower.includes('character')?'👤'
+    :lower.includes('location')||lower.includes('map')?'🗺'
+    :lower.includes('lore')||lower.includes('history')?'📖'
+    :lower.includes('rule')||lower.includes('mechanic')?'⚙'
+    :lower.includes('session')?'🎲'
+    :'📜';
+  addTab(title,html,icon);
+}
+
+function renderMd(raw,title){
+  // Strip YAML frontmatter
+  let content=raw.replace(/^---[\s\S]*?---\n?/,'').trim();
+  // Convert wiki links [[X]] to styled spans
+  content=content.replace(/\[\[([^\]]+)\]\]/g,'<span class="wiki-link">$1</span>');
+  // Parse markdown
+  marked.setOptions({breaks:true,gfm:true});
+  let html=marked.parse(content);
+  // Prefix with title if no h1 found
+  if(!/<h1[\s>]/.test(html)){
+    html=`<h1>${title}</h1>`+html;
+  }
+  return html;
+}
+
+// Drag and drop
+document.addEventListener('dragover',e=>{e.preventDefault();document.getElementById('drop-overlay').classList.add('active');});
+document.addEventListener('dragleave',e=>{if(e.relatedTarget===null)document.getElementById('drop-overlay').classList.remove('active');});
+document.addEventListener('drop',e=>{
+  e.preventDefault();
+  document.getElementById('drop-overlay').classList.remove('active');
+  const files=[...e.dataTransfer.files].filter(f=>f.name.match(/\.(md|markdown)$/i));
+  if(files.length)files.forEach(f=>{const r=new FileReader();r.onload=ev=>openMdFile(f.name,ev.target.result);r.readAsText(f);});
+});
+
+// ═══════════════════════════════════════════════════════════
+// COMBAT TRACKER DATA
+// ═══════════════════════════════════════════════════════════
+const COSTS={solo:5,bruiser:4,leader:3,horde:2,ranged:2,skulk:2,standard:2,minion:1,support:1,social:1};
+const TYPE_ORDER=['solo','bruiser','leader','horde','ranged','skulk','standard','minion','support','social'];
+const ICONS={solo:'👁',bruiser:'💪',leader:'👑',horde:'🌊',ranged:'🏹',skulk:'🌑',standard:'⚔',minion:'💀',support:'✨',social:'🗣'};
+const P='passive',A='action',R='reaction',F='fear';
+
+const ADV=[
+  {id:'acid-burrower',name:'Acid Burrower',type:'solo',dc:14,hp:8,st:3,maj:8,sev:15,atk:'+3',wpn:'Claws · Very Close',dmg:'1d12+2 phy',motives:'Tremor sense, burst from ground, acid burn',feats:[{k:P,n:'Relentless (3)',d:'Can be spotlighted up to 3 times per GM turn. Spend Fear as usual each spotlight.'},{k:A,n:'Earth Eruption',d:'Mark a Stress to burst from the ground. All creatures within Very Close must succeed on an Agility Reaction Roll or be knocked Vulnerable until they next act.'},{k:A,n:'Spit Acid',d:'Attack all targets in front within Close. Hits take 2d6 phy and must mark an Armor Slot without its benefit. If no Armor Slot available, mark an additional HP and gain a Fear.'},{k:R,n:'Acid Bath',d:'When the Burrower takes Severe damage, all creatures within Close take 1d10 phy. Ground within Very Close is coated — any non-Burrower moving through takes 1d6 phy.'}]},
+  {id:'cave-ogre',name:'Cave Ogre',type:'solo',dc:13,hp:8,st:3,maj:8,sev:15,atk:'+1',wpn:'Club · Very Close',dmg:'1d10+2 phy',motives:'Bite off heads, feast, stomp, throw enemies',feats:[{k:P,n:'Ramp Up',d:'Must spend a Fear to spotlight the Ogre. While spotlighted, they can attack all targets within range with their standard attack.'},{k:P,n:'Bone Breaker',d:"The Ogre's attacks deal direct damage."},{k:A,n:'Hail of Boulders',d:'Mark a Stress to hurl heavy objects at all targets in front within Far. Hits take 1d10+2 phy. If more than one target is hit, gain a Fear.'},{k:R,n:'Rampaging Fury',d:'When the Ogre marks 2 or more HP, move them to a point within Close and deal 2d6+3 direct phy to all targets in their path.'}]},
+  {id:'construct',name:'Construct',type:'solo',dc:13,hp:9,st:4,maj:7,sev:15,atk:'+4',wpn:'Fist Slam · Melee',dmg:'1d20 phy',motives:'Destroy environment, serve creator, smash, trample',feats:[{k:P,n:'Relentless (2)',d:'Can be spotlighted up to 2 times per GM turn. Spend Fear as usual.'},{k:P,n:'Weak Structure',d:'When the Construct marks HP from physical damage, they must mark an additional HP.'},{k:A,n:'Trample',d:"Mark a Stress to attack all targets in the Construct's path when they move. Hits take 1d8 phy."},{k:R,n:'Overload',d:"Before rolling damage, mark a Stress to add +10 to the damage roll. The Construct can then take the spotlight again."},{k:R,n:'Death Quake',d:'When the Construct marks their last HP, the magic ruptures in a force explosion. Attack with advantage against all within Very Close. Hits take 1d12+2 mag.'}]},
+  {id:'chaos-elemental',name:'Minor Chaos Elemental',type:'solo',dc:14,hp:7,st:3,maj:7,sev:14,atk:'+3',wpn:'Warp Blast · Close',dmg:'1d12+6 mag',motives:'Confound, destabilize, transmogrify',feats:[{k:P,n:'Arcane Form',d:'Resistant to magic damage.'},{k:A,n:'Sickening Flux',d:'Mark a HP to force all targets within Close to mark a Stress and become Vulnerable until their next rest or they clear a HP.'},{k:A,n:'Remake Reality',d:'Spend a Fear to transform the area within Very Close into a different biome. All targets within take 2d6+3 direct mag damage.'},{k:R,n:'Magical Reflection',d:'When the Elemental takes damage from an attack within Close, deal damage to the attacker equal to half the damage they dealt.'},{k:R,n:'Momentum',d:'When the Elemental makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'fire-elemental',name:'Minor Fire Elemental',type:'solo',dc:13,hp:9,st:3,maj:7,sev:15,atk:'+3',wpn:'Elemental Blast · Far',dmg:'1d10+4 mag',motives:'Encircle enemies, grow in size, start fires',feats:[{k:P,n:'Relentless (2)',d:'Can be spotlighted up to 2 times per GM turn. Spend Fear as usual.'},{k:A,n:'Scorched Earth',d:'Mark a Stress. Choose a point within Far — ground within Very Close of that point bursts into flames. All creatures there make an Agility Reaction Roll: fail = 2d8 mag; success = half.'},{k:F,n:'Explosion',d:'Spend a Fear to erupt in a fiery explosion. Attack all targets within Close. Hits take 1d8 mag and are knocked back to Far range.'},{k:R,n:'Consume Kindling',d:'Three times per scene, when the Elemental moves onto highly flammable objects, consume them to clear a HP or Stress.'},{k:R,n:'Momentum',d:'When the Elemental makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'minor-demon',name:'Minor Demon',type:'solo',dc:14,hp:8,st:4,maj:8,sev:15,atk:'+3',wpn:'Claws · Melee',dmg:'1d8+6 phy',motives:'Act erratically, corral targets, relish pain, torment',feats:[{k:P,n:'Relentless (2)',d:'Can be spotlighted up to 2 times per GM turn. Spend Fear as usual.'},{k:P,n:'All Must Fall',d:'When a PC rolls a failure with Fear while within Close range of the Demon, they lose a Hope.'},{k:F,n:'Hellfire',d:'Spend a Fear to rain hellfire within Far range. All targets must make an Agility Reaction Roll: fail = 1d20+3 mag; success = half.'},{k:R,n:'Reaper',d:"Before rolling damage for the Demon's attack, mark a Stress to add a bonus equal to the Demon's current marked HP count."},{k:R,n:'Momentum',d:'When the Demon makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'zombie-hulk',name:'Patchwork Zombie Hulk',type:'solo',dc:13,hp:10,st:3,maj:8,sev:15,atk:'+4',wpn:'Too Many Arms · Very Close',dmg:'1d20 phy',motives:'Absorb corpses, flail, hunger, terrify',feats:[{k:P,n:'Destructible',d:'When the Zombie takes Major or greater damage, they mark an additional HP.'},{k:P,n:'Flailing Limbs',d:'When the Zombie makes a standard attack, they can attack all targets within Very Close range.'},{k:A,n:'Another for the Pile',d:'When the Zombie is within Very Close of a corpse, incorporate it into themselves, clearing a HP and a Stress.'},{k:A,n:'Tormented Screams',d:'Mark a Stress. All PCs within Far make a Presence Reaction Roll (13): fail = lose a Hope (gain a Fear each); success = mark a Stress.'}]},
+  {id:'bear',name:'Bear',type:'bruiser',dc:14,hp:7,st:2,maj:9,sev:17,atk:'+1',wpn:'Claws · Melee',dmg:'1d8+3 phy',motives:'Climb, defend territory, pummel, track',feats:[{k:P,n:'Overwhelming Force',d:"Targets who mark HP from the Bear's standard attack are knocked back to Very Close range."},{k:A,n:'Bite',d:'Mark a Stress to attack a target within Melee. On a success, deal 3d4+10 phy and the target is Restrained until they succeed on a Strength Roll.'},{k:R,n:'Momentum',d:'When the Bear makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'deeproot',name:'Deeproot Defender',type:'bruiser',dc:10,hp:7,st:3,maj:8,sev:14,atk:'+2',wpn:'Vines · Close',dmg:'1d8+3 phy',motives:'Ambush, grab, protect, pummel',feats:[{k:A,n:'Ground Slam',d:'Slam the ground, knocking all targets within Very Close back to Far range. Each knocked-back target marks a Stress.'},{k:A,n:'Grab and Drag',d:'Attack a target within Close. On a success, spend a Fear to pull them into Melee, deal 1d6+2 phy, and Restrain them until the Defender takes Severe damage.'}]},
+  {id:'giant-scorpion',name:'Giant Scorpion',type:'bruiser',dc:13,hp:6,st:3,maj:7,sev:13,atk:'+1',wpn:'Pincers · Melee',dmg:'1d12+2 phy',motives:'Ambush, feed, grapple, poison',feats:[{k:A,n:'Double Strike',d:'Mark a Stress to make a standard attack against two targets within Melee range.'},{k:A,n:'Venomous Stinger',d:'Attack a target within Very Close. On a success, spend a Fear to deal 1d4+4 phy and Poison them until next rest or a Knowledge Roll (16). While Poisoned, roll d6 before each action roll — on 4 or lower, mark a Stress.'},{k:R,n:'Momentum',d:'When the Scorpion makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'kneebreaker',name:'Jagged Knife Kneebreaker',type:'bruiser',dc:12,hp:7,st:4,maj:7,sev:14,atk:'−3',wpn:'Club · Melee',dmg:'1d4+6 phy',motives:'Grapple, intimidate, steal',feats:[{k:P,n:"I've Got 'Em",d:'Creatures Restrained by the Kneebreaker take double damage from attacks by other adversaries.'},{k:A,n:'Hold Them Down',d:'Attack a target within Melee. On a success, no damage but target is Restrained and Vulnerable. Freed with a Strength Roll or if Kneebreaker takes Major+ damage.'}]},
+  {id:'pirate-tough',name:'Pirate Tough',type:'bruiser',dc:13,hp:5,st:3,maj:8,sev:15,atk:'+1',wpn:'Massive Fists · Melee',dmg:'2d6 phy',motives:'Plunder, raid, smash, terrorize',feats:[{k:P,n:'Swashbuckler',d:'When the Tough marks 2 or fewer HP from a Melee attack, the attacker must mark a Stress.'},{k:A,n:'Clear the Decks',d:'Attack a target within Very Close. On a success, mark a Stress to move into Melee, deal 3d4 phy, and knock the target back to Close.'}]},
+  {id:'skeleton-knight',name:'Skeleton Knight',type:'bruiser',dc:13,hp:5,st:2,maj:7,sev:13,atk:'+2',wpn:'Rusty Greatsword · Melee',dmg:'1d10+2 phy',motives:'Cut down the living, steal skin, wreak havoc',feats:[{k:P,n:'Terrifying',d:'When the Knight makes a successful attack, all PCs within Close lose a Hope and you gain a Fear.'},{k:A,n:'Cut to the Bone',d:'Mark a Stress to attack all targets within Very Close. Hits take 1d8+2 phy and must mark a Stress.'},{k:R,n:'Dig Two Graves',d:'When the Knight is defeated, they attack a target within Very Close (priority: their killer). On a success, that target takes 1d4+8 phy and loses 1d4 Hope.'}]},
+  {id:'weaponmaster',name:'Weaponmaster',type:'bruiser',dc:14,hp:6,st:3,maj:8,sev:15,atk:'+2',wpn:'Claymore · Very Close',dmg:'1d12+2 phy',motives:'Act first, aim for the weakest, intimidate',feats:[{k:A,n:'Goading Strike',d:"Make a standard attack. On a success, mark a Stress to Taunt the target until their next successful attack. While Taunted, they have disadvantage against targets other than the Weaponmaster."},{k:A,n:'Adrenaline Burst',d:'Once per scene, spend a Fear to clear 2 HP and 2 Stress.'},{k:R,n:'Momentum',d:'When the Weaponmaster makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'brawny-zombie',name:'Brawny Zombie',type:'bruiser',dc:10,hp:7,st:4,maj:8,sev:15,atk:'+2',wpn:'Slam · Very Close',dmg:'1d12+3 phy',motives:'Crush, destroy, hail debris, slam',feats:[{k:P,n:'Slow',d:"When spotlighted without a token, place a token — can't act yet. When spotlighted with a token, clear it and act."},{k:A,n:'Rend Asunder',d:'Make a standard attack with advantage against a Restrained target. On a success, the attack deals direct damage.'},{k:R,n:'Rip and Tear',d:'When the Zombie makes a successful standard attack, mark a Stress to temporarily Restrain the target and force them to mark 2 Stress.'}]},
+  {id:'head-guard',name:'Head Guard',type:'leader',dc:15,hp:7,st:3,maj:7,sev:13,atk:'+4',wpn:'Mace · Melee',dmg:'1d10+4 phy',motives:'Arrest, close gates, pin down, seek glory',feats:[{k:A,n:'Rally Guards',d:'Spend 2 Fear to spotlight the Head Guard and up to 2d4 allies within Far range.'},{k:R,n:'On My Signal',d:'Countdown (5). When the Head Guard is spotlighted for the first time, activate the countdown — it ticks down when a PC makes an attack roll. When triggered, all Archer Guards within Far attack with advantage against the nearest target. Combine damage if multiple hit the same target.'},{k:R,n:'Momentum',d:'When the Head Guard makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'jk-lieutenant',name:'Jagged Knife Lieutenant',type:'leader',dc:13,hp:6,st:3,maj:7,sev:14,atk:'+2',wpn:'Javelin · Close',dmg:'1d8+3 phy',motives:'Bully, command, profit, reinforce',feats:[{k:A,n:'Tactician',d:'When you spotlight the Lieutenant, mark a Stress to also spotlight two allies within Close range.'},{k:A,n:'More Where That Came From',d:'Summon three Jagged Knife Lackeys, who appear at Far range.'},{k:A,n:'Coup de Grâce',d:'Spend a Fear to attack a Vulnerable target within Close. On a success, deal 2d6+12 phy and the target marks a Stress.'},{k:R,n:'Momentum',d:'When the Lieutenant makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'pirate-captain',name:'Pirate Captain',type:'leader',dc:14,hp:7,st:5,maj:7,sev:14,atk:'+4',wpn:'Cutlass · Melee',dmg:'1d12+2 phy',motives:"Command, plunder, raid, make 'em walk the plank",feats:[{k:P,n:'Swashbuckler',d:'When the Captain marks 2 or fewer HP from a Melee attack, the attacker must mark a Stress.'},{k:A,n:'Reinforcements',d:'Once per scene, mark a Stress to summon a Pirate Raiders Horde at Far range.'},{k:A,n:'No Quarter',d:'Spend a Fear. Target a PC with 3+ Pirates within Melee. The target makes a Presence Reaction Roll: fail = mark 1d4+1 Stress; success = mark a Stress.'},{k:R,n:'Momentum',d:'When the Captain makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'spellblade',name:'Spellblade',type:'leader',dc:14,hp:6,st:3,maj:8,sev:14,atk:'+3',wpn:'Empowered Longsword · Melee',dmg:'1d8+4 phy/mag',motives:'Blast, command, endure',feats:[{k:P,n:'Arcane Steel',d:"Damage dealt by the Spellblade's standard attack is considered both physical and magic."},{k:A,n:'Suppressing Blast',d:'Mark a Stress and target a group within Far. All targets must succeed on an Agility Reaction Roll or take 1d8+2 mag. Gain a Fear for each target who marks HP.'},{k:A,n:'Move as a Unit',d:'Spend 2 Fear to spotlight up to five allies within Far range.'},{k:R,n:'Momentum',d:'When the Spellblade makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'young-dryad',name:'Young Dryad',type:'leader',dc:11,hp:6,st:2,maj:6,sev:11,atk:'+0',wpn:'Scythe · Melee',dmg:'1d8+5 phy',motives:'Command, nurture, prune the unwelcome',feats:[{k:A,n:'Voice of the Forest',d:'Mark a Stress to spotlight 1d4 allies within range of a target they can attack without moving. On a success, their attacks deal half damage.'},{k:A,n:'Thorny Cage',d:'Spend a Fear to cage a target within Very Close, Restraining them until freed with a successful Strength Roll. Any creature making an action roll against the cage must mark a Stress.'},{k:R,n:'Momentum',d:'When the Dryad makes a successful attack against a PC, gain a Fear.'}]},
+  {id:'mosquitoes',name:'Giant Mosquitoes',type:'horde',dc:10,hp:6,st:3,maj:5,sev:9,atk:'−2',wpn:'Proboscis · Melee',dmg:'1d8+3 phy',motives:'Fly away, harass, steal blood',feats:[{k:P,n:'Horde (1d4+1)',d:'When half or more HP are marked, standard attack deals 1d4+1 phy instead.'},{k:P,n:'Flying',d:'While flying, the Mosquitoes have +2 to their Difficulty.'},{k:R,n:'Bloodsucker',d:'When their attack causes a target to mark HP, mark a Stress to force the target to mark an additional HP.'}]},
+  {id:'pirate-raiders',name:'Pirate Raiders',type:'horde',dc:12,hp:4,st:3,maj:5,sev:11,atk:'+1',wpn:'Cutlass · Melee',dmg:'1d8+2 phy',motives:'Gang up, plunder, raid',feats:[{k:P,n:'Horde (1d4+1)',d:'When half or more HP are marked, standard attack deals 1d4+1 phy instead.'},{k:P,n:'Swashbuckler',d:'When the Raiders mark 2 or fewer HP from a Melee attack, the attacker must mark a Stress.'}]},
+  {id:'swarm-rats',name:'Swarm of Rats',type:'horde',dc:10,hp:6,st:2,maj:6,sev:10,atk:'−3',wpn:'Claws · Melee',dmg:'1d8+2 phy',motives:'Consume, obscure, swarm',feats:[{k:P,n:'Horde (1d4+1)',d:'When half or more HP are marked, standard attack deals 1d4+1 phy instead.'},{k:P,n:'In Your Face',d:'All targets within Melee range have disadvantage on attacks against targets other than the Swarm.'}]},
+  {id:'bramble-swarm',name:'Tangle Bramble Swarm',type:'horde',dc:12,hp:6,st:3,maj:6,sev:11,atk:'+0',wpn:'Thorns · Melee',dmg:'1d6+3 phy',motives:'Digest, entangle, immobilize',feats:[{k:P,n:'Horde (1d4+2)',d:'When half or more HP are marked, standard attack deals 1d4+2 phy instead.'},{k:A,n:'Crush',d:'Mark a Stress to deal 2d6+8 direct phy to a target with 3+ bramble tokens.'},{k:R,n:'Encumber',d:'When the Swarm succeeds on an attack, give the target a bramble token. Any tokens = Restrained. 3+ tokens = also Vulnerable. Remove with Finesse Roll (12 + # tokens) or Major+ damage to the Swarm. Tokens removed via Finesse spawn that many Tangle Bramble Minions within Melee.'}]},
+  {id:'zombie-pack',name:'Zombie Pack',type:'horde',dc:8,hp:6,st:3,maj:6,sev:12,atk:'−1',wpn:'Bite · Melee',dmg:'1d10+2 phy',motives:'Eat flesh, hunger, maul, surround',feats:[{k:P,n:'Horde (1d4+2)',d:'When half or more HP are marked, standard attack deals 1d4+2 phy instead.'},{k:R,n:'Overwhelm',d:'When the Zombies mark HP from a Melee attack, mark a Stress to make a standard attack against the attacker.'}]},
+  {id:'archer-guard',name:'Archer Guard',type:'ranged',dc:10,hp:3,st:2,maj:4,sev:8,atk:'+1',wpn:'Longbow · Far',dmg:'1d8+3 phy',motives:'Arrest, pin down, make it through the day',feats:[{k:A,n:'Hobbling Shot',d:'Attack a target within Far. On a success, mark a Stress to deal 1d12+3 phy. If the target marks HP, they have disadvantage on Agility Rolls until they clear at least 1 HP.'}]},
+  {id:'jk-sniper',name:'Jagged Knife Sniper',type:'ranged',dc:13,hp:3,st:2,maj:4,sev:7,atk:'−1',wpn:'Shortbow · Far',dmg:'1d10+2 phy',motives:'Ambush, hide, profit, reposition',feats:[{k:P,n:'Unseen Strike',d:'If the Sniper is Hidden when they make a successful standard attack, they deal 1d10+4 phy instead of standard.'}]},
+  {id:'skeleton-archer',name:'Skeleton Archer',type:'ranged',dc:9,hp:3,st:2,maj:4,sev:7,atk:'+2',wpn:'Shortbow · Far',dmg:'1d8+1 phy',motives:'Perforate distracted targets, play dead',feats:[{k:P,n:'Opportunist',d:'When two or more adversaries are within Very Close of a creature, all damage the Archer deals to that creature is doubled.'},{k:A,n:'Deadly Shot',d:'Attack a Vulnerable target within Far. On a success, mark a Stress to deal 3d4+8 phy.'}]},
+  {id:'dire-wolf',name:'Dire Wolf',type:'skulk',dc:12,hp:4,st:3,maj:5,sev:9,atk:'+2',wpn:'Claws · Melee',dmg:'1d6+2 phy',motives:'Defend territory, harry, protect pack, surround',feats:[{k:P,n:'Pack Tactics',d:'If the Wolf makes a successful standard attack and another Dire Wolf is within Melee of the target, deal 1d6+5 phy instead of standard and gain a Fear.'},{k:A,n:'Hobbling Strike',d:'Mark a Stress to attack a target within Melee. On a success, deal 3d4+10 direct phy and make them Vulnerable until they clear at least 1 HP.'}]},
+  {id:'green-ooze',name:'Green Ooze',type:'skulk',dc:8,hp:5,st:2,maj:5,sev:10,atk:'+1',wpn:'Ooze Appendage · Melee',dmg:'1d6+1 mag',motives:'Camouflage, consume and multiply, envelop',feats:[{k:P,n:'Slow',d:"When spotlighted without a token, place a token — can't act yet. When spotlighted with a token, clear it and act."},{k:P,n:'Acidic Form',d:"When the Ooze makes a successful attack, the target must mark an Armor Slot without its benefit. If no Armor Slot, mark an additional HP."},{k:A,n:'Envelop',d:"Standard attack within Melee. On a success, the Ooze envelops them — target marks 2 Stress and must mark a Stress with each action roll. Freed if the Ooze takes Severe damage."},{k:R,n:'Split',d:'When the Ooze has 3+ HP marked, spend a Fear to split into two Tiny Green Oozes (no HP or Stress). Immediately spotlight both.'}]},
+  {id:'tiny-green-ooze',name:'Tiny Green Ooze',type:'skulk',dc:14,hp:2,st:1,maj:4,sev:null,atk:'−1',wpn:'Ooze Appendage · Melee',dmg:'1d4+1 mag',motives:"Camouflage, creep up (spawned by Green Ooze's Split)",feats:[{k:P,n:'Acidic Form',d:"When the Ooze makes a successful attack, the target must mark an Armor Slot without its benefit. If no Armor Slot, mark an additional HP."}]},
+  {id:'red-ooze',name:'Red Ooze',type:'skulk',dc:10,hp:5,st:3,maj:6,sev:11,atk:'+1',wpn:'Ooze Appendage · Melee',dmg:'1d8+3 mag',motives:'Camouflage, consume and multiply, ignite, start fires',feats:[{k:P,n:'Creeping Fire',d:'The Ooze can only move within Very Close range as normal movement. They light any flammable object they touch on fire.'},{k:A,n:'Ignite',d:'Attack a target within Very Close. On a success, deal 1d8 mag and Ignite them until extinguished via Finesse Roll (14). While Ignited, target takes 1d4 mag with each action roll.'},{k:R,n:'Split',d:'When the Ooze has 3+ HP marked, spend a Fear to split into two Tiny Red Oozes (no HP or Stress). Immediately spotlight both.'}]},
+  {id:'tiny-red-ooze',name:'Tiny Red Ooze',type:'skulk',dc:11,hp:2,st:1,maj:5,sev:null,atk:'−1',wpn:'Ooze Appendage · Melee',dmg:'1d4+2 mag',motives:"Blaze, camouflage (spawned by Red Ooze's Split)",feats:[{k:R,n:'Burning',d:'When a creature within Melee deals damage to the Ooze, they take 1d6 direct mag damage.'}]},
+  {id:'jk-shadow',name:'Jagged Knife Shadow',type:'skulk',dc:12,hp:3,st:3,maj:4,sev:8,atk:'+1',wpn:'Daggers · Melee',dmg:'1d4+4 phy',motives:'Ambush, conceal, divide, profit',feats:[{k:P,n:'Backstab',d:'When the Shadow succeeds on a standard attack that has advantage, they deal 1d6+6 phy instead of standard.'},{k:A,n:'Cloaked',d:"Become Hidden until after the Shadow's next attack. Attacks made while Hidden from this feature have advantage."}]},
+  {id:'bladed-guard',name:'Bladed Guard',type:'standard',dc:12,hp:5,st:2,maj:5,sev:9,atk:'+1',wpn:'Longsword · Melee',dmg:'1d6+1 phy',motives:'Arrest, close gates, make it through the day',feats:[{k:P,n:'Shield Wall',d:'A creature who tries to move within Very Close of the Guard must succeed on an Agility Roll. If additional Bladed Guards stand in a line (each within Melee of another), Difficulty increases by the total number of guards in that line.'},{k:A,n:'Detain',d:'Attack a target within Very Close. On a success, mark a Stress to Restrain the target until they break free with a successful attack, Finesse Roll, or Strength Roll.'}]},
+  {id:'glass-snake',name:'Glass Snake',type:'standard',dc:14,hp:5,st:3,maj:6,sev:10,atk:'+2',wpn:'Glass Fangs · Very Close',dmg:'1d8+2 phy',motives:'Climb, feed, keep distance, scare',feats:[{k:P,n:'Armor-Shredding Shards',d:'On a successful Melee attack against the Snake, the attacker must mark an Armor Slot without its benefit. If no Armor Slot, they mark an additional HP.'},{k:A,n:'Spinning Serpent',d:'Mark a Stress to attack all targets within Very Close. Hits take 1d6+1 phy.'},{k:A,n:'Spitter',d:"Spend a Fear to introduce a d6 Spitter Die. When the Snake is spotlighted, roll this die — on 5+, all targets in front within Far must succeed on Agility Reaction Roll or take 1d4 phy. The Snake can then take the spotlight a second time this GM turn."}]},
+  {id:'harrier',name:'Harrier',type:'standard',dc:12,hp:3,st:3,maj:5,sev:9,atk:'+1',wpn:'Javelin · Close',dmg:'1d6+2 phy',motives:'Flank, harry, kite, profit',feats:[{k:P,n:'Maintain Distance',d:'After making a standard attack, the Harrier can move anywhere within Far range.'},{k:R,n:'Fall Back',d:'When a creature moves into Melee to attack, mark a Stress before the attack roll to move anywhere within Close and make an attack against that creature. On a success, deal 1d10+2 phy.'}]},
+  {id:'jk-bandit',name:'Jagged Knife Bandit',type:'standard',dc:12,hp:5,st:3,maj:8,sev:14,atk:'+1',wpn:'Daggers · Melee',dmg:'1d8+1 phy',motives:'Escape, profit, steal, throw smoke',feats:[{k:P,n:'Climber',d:'The Bandit climbs just as easily as they run.'},{k:P,n:'From Above',d:'When the Bandit succeeds on a standard attack from above a target, they deal 1d10+1 phy instead of standard.'}]},
+  {id:'skeleton-warrior',name:'Skeleton Warrior',type:'standard',dc:10,hp:3,st:2,maj:4,sev:8,atk:'+0',wpn:'Sword · Melee',dmg:'1d6+2 phy',motives:'Feign death, gang up, steal skin',feats:[{k:P,n:'Only Bones',d:'The Warrior is resistant to physical damage.'},{k:R,n:"Won't Stay Dead",d:"When the Warrior is defeated, spotlight them and roll a d6. On a 6, if other adversaries are on the battlefield, the Warrior re-forms with no marked HP."}]},
+  {id:'sylvan-soldier',name:'Sylvan Soldier',type:'standard',dc:11,hp:4,st:2,maj:6,sev:11,atk:'+0',wpn:'Scythe · Melee',dmg:'1d8+1 phy',motives:'Ambush, hide, overwhelm, protect, trail',feats:[{k:P,n:'Pack Tactics',d:'If the Soldier makes a standard attack and another Sylvan Soldier is within Melee of the target, deal 1d8+5 phy instead of standard.'},{k:A,n:'Forest Control',d:'Spend a Fear to pull down a tree within Close. A creature hit must succeed on an Agility Reaction Roll (15) or take 1d10 phy.'},{k:R,n:'Blend In',d:"When the Soldier makes a successful attack, mark a Stress to become Hidden until the Soldier's next attack or a PC succeeds on an Instinct Roll (14) to find them."}]},
+  {id:'shambling-zombie',name:'Shambling Zombie',type:'standard',dc:10,hp:4,st:1,maj:4,sev:6,atk:'+0',wpn:'Bite · Melee',dmg:'1d6+1 phy',motives:'Eat flesh, hunger, maul',feats:[{k:P,n:'Too Many to Handle',d:'When the Zombie is within Melee of a creature and at least one other Zombie is within Close range, all attacks against that creature have advantage.'},{k:P,n:'Horrifying',d:"Targets who mark HP from the Zombie's attacks must also mark a Stress."}]},
+  {id:'giant-rat',name:'Giant Rat',type:'minion',dc:10,hp:1,st:1,maj:null,sev:null,atk:'−4',wpn:'Claws · Melee',dmg:'1 phy',motives:'Burrow, hunger, scavenge',feats:[{k:P,n:'Minion (3)',d:'Defeated when they take any damage. For every 3 damage dealt, defeat an additional Minion within range the attack would succeed against.'},{k:A,n:'Group Attack',d:'Spend a Fear to spotlight all Giant Rats within Close of a target. Move into Melee, one shared attack. On a success, deal 1 phy each — combine.'}]},
+  {id:'jk-lackey',name:'Jagged Knife Lackey',type:'minion',dc:9,hp:1,st:1,maj:null,sev:null,atk:'−2',wpn:'Daggers · Melee',dmg:'2 phy',motives:'Escape, profit, throw smoke',feats:[{k:P,n:'Minion (3)',d:'Defeated when they take any damage. For every 3 damage dealt, defeat an additional Minion within range the attack would succeed against.'},{k:A,n:'Group Attack',d:'Spend a Fear to spotlight all Lackeys within Close of a target. Move into Melee, one shared attack. On a success, deal 2 phy each — combine.'}]},
+  {id:'minor-treant',name:'Minor Treant',type:'minion',dc:10,hp:1,st:1,maj:null,sev:null,atk:'−2',wpn:'Clawed Branch · Melee',dmg:'4 phy',motives:'Crush, overwhelm, protect',feats:[{k:P,n:'Minion (5)',d:'Defeated when they take any damage. For every 5 damage dealt, defeat an additional Minion within range the attack would succeed against.'},{k:A,n:'Group Attack',d:'Spend a Fear to spotlight all Minor Treants within Close of a target. Move into Melee, one shared attack. On a success, deal 4 phy each — combine.'}]},
+  {id:'rotted-zombie',name:'Rotted Zombie',type:'minion',dc:8,hp:1,st:1,maj:null,sev:null,atk:'−3',wpn:'Bite · Melee',dmg:'2 phy',motives:'Eat flesh, hunger, surround',feats:[{k:P,n:'Minion (3)',d:'Defeated when they take any damage. For every 3 damage dealt, defeat an additional Minion within range the attack would succeed against.'},{k:A,n:'Group Attack',d:'Spend a Fear to spotlight all Rotted Zombies within Close of a target. Move into Melee, one shared attack. On a success, deal 2 phy each — combine.'}]},
+  {id:'sellsword',name:'Sellsword',type:'minion',dc:10,hp:1,st:1,maj:null,sev:null,atk:'+3',wpn:'Longsword · Melee',dmg:'3 phy',motives:'Charge, lacerate, overwhelm, profit',feats:[{k:P,n:'Minion (4)',d:'Defeated when they take any damage. For every 4 damage dealt, defeat an additional Minion within range the attack would succeed against.'},{k:A,n:'Group Attack',d:'Spend a Fear to spotlight all Sellswords within Close of a target. Move into Melee, one shared attack. On a success, deal 3 phy each — combine.'}]},
+  {id:'skeleton-dredge',name:'Skeleton Dredge',type:'minion',dc:8,hp:1,st:1,maj:null,sev:null,atk:'−1',wpn:'Bone Claws · Melee',dmg:'1 phy',motives:'Fall apart, overwhelm, play dead',feats:[{k:P,n:'Minion (4)',d:'Defeated when they take any damage. For every 4 damage dealt, defeat an additional Minion within range the attack would succeed against.'},{k:A,n:'Group Attack',d:'Spend a Fear to spotlight all Dredges within Close of a target. Move into Melee, one shared attack. On a success, deal 1 phy each — combine.'}]},
+  {id:'tangle-bramble',name:'Tangle Bramble',type:'minion',dc:11,hp:1,st:1,maj:null,sev:null,atk:'−1',wpn:'Thorns · Melee',dmg:'2 phy',motives:'Combine, drain, entangle',feats:[{k:P,n:'Minion (4)',d:'Defeated when they take any damage. For every 4 damage dealt, defeat an additional Minion within range the attack would succeed against.'},{k:A,n:'Group Attack',d:'Spend a Fear to spotlight all Tangle Brambles within Close of a target. Move into Melee, one shared attack. On a success, deal 2 phy each — combine.'},{k:R,n:'Drain and Multiply',d:"When an attack causes a target to mark HP and there are 3+ Tangle Bramble Minions within Close range, combine them into a Tangle Bramble Swarm Horde. The Horde's HP = number of Minions combined."}]},
+  {id:'jk-hexer',name:'Jagged Knife Hexer',type:'support',dc:13,hp:4,st:4,maj:5,sev:9,atk:'+2',wpn:'Staff · Far',dmg:'1d6+2 mag',motives:'Command, hex, profit',feats:[{k:A,n:'Curse',d:'Choose a target within Far and temporarily Curse them. While Cursed, mark a Stress when that target rolls with Hope to make the roll be with Fear instead.'},{k:A,n:'Chaotic Flux',d:'Attack up to three targets within Very Close. Mark a Stress to deal 2d6+3 mag to any the Hexer succeeded against.'}]},
+  {id:'courtier',name:'Courtier',type:'social',dc:12,hp:3,st:4,maj:4,sev:8,atk:'−4',wpn:'Daggers · Melee',dmg:'1d4+2 phy',motives:'Discredit, gain favor, maneuver, scheme',feats:[{k:A,n:'Mockery',d:'Mark a Stress to say something mocking and force a target within Close to make a Presence Reaction Roll (14). Fail = mark 2 Stress and become Vulnerable until the scene ends.'},{k:A,n:'Scapegoat',d:'Spend a Fear and target a PC. The Courtier convinces a crowd or prominent individual that the target is the cause of their current conflict or misfortune.'}]},
+  {id:'merchant',name:'Merchant',type:'social',dc:12,hp:3,st:3,maj:4,sev:8,atk:'−4',wpn:'Club · Melee',dmg:'1d4+1 phy',motives:'Buy low and sell high, create demand, inflate prices',feats:[{k:P,n:'Preferential Treatment',d:'A PC who succeeds on a Presence Roll against the Merchant gains a discount on purchases. A PC who fails must pay more and has disadvantage on future Presence Rolls against the Merchant.'},{k:P,n:'The Runaround',d:'When a PC rolls a 14 or lower on a Presence Roll against the Merchant, they must mark a Stress.'}]},
+  {id:'petty-noble',name:'Petty Noble',type:'social',dc:14,hp:3,st:5,maj:6,sev:10,atk:'−3',wpn:'Rapier · Melee',dmg:'1d6+1 phy',motives:'Abuse power, gather resources, mobilize minions',feats:[{k:P,n:'My Land, My Rules',d:'All social actions made against the Noble on their own land have disadvantage.'},{k:A,n:'Guards, Seize Them!',d:'Once per scene, mark a Stress to summon 1d4 Bladed Guards, who appear at Far range.'},{k:A,n:'Exile',d:'Spend a Fear and target a PC. The Noble proclaims the target and their allies exiled from their territory. While exiled, all have disadvantage during social situations within the Noble\'s domain.'}]},
+];
+
+// ═══════════════════════════════════════════════════════════
+// COMBAT STATE
+// ═══════════════════════════════════════════════════════════
+let sidebarOpen=true,battleStarted=false,round=1;
+let playerCount=4,bpTotal=14,bpSpent=0;
+let cart=[],combatants=[],filterType='all',iid=0;
+let expanded=new Set();
+
+function toggleSidebar(){
+  sidebarOpen=!sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed',!sidebarOpen);
+  document.getElementById('sidebar-toggle').textContent=sidebarOpen?'✕':'☰';
+}
+function openSidebar(){if(!sidebarOpen)toggleSidebar();}
+
+function updateBP(){
+  playerCount=parseInt(document.getElementById('player-count').value)||4;
+  bpTotal=3*playerCount+2;syncBP();
+}
+function syncBP(){
+  bpSpent=battleStarted?combatants.reduce((s,c)=>s+COSTS[c.type],0):cart.reduce((s,c)=>s+COSTS[c.type],0);
+  const rem=bpTotal-bpSpent;
+  document.getElementById('bp-total').textContent=bpTotal;
+  document.getElementById('bp-spent').textContent=bpSpent;
+  document.getElementById('bp-rem').textContent=rem;
+  document.getElementById('status-bp').textContent=rem;
+  const pct=Math.min(100,(bpSpent/bpTotal)*100);
+  const bar=document.getElementById('bp-bar');
+  bar.style.width=pct+'%';
+  bar.classList.toggle('over',bpSpent>bpTotal);
+}
+
+function buildFilters(){
+  document.getElementById('filter-row').innerHTML=
+    ['all',...TYPE_ORDER].map(t=>`<button class="filter-btn${t===filterType?' active':''}" onclick="setFilter('${t}')">${t==='all'?'All':ICONS[t]+' '+cap(t)}</button>`).join('');
+}
+function setFilter(t){filterType=t;buildFilters();renderList();}
+function cap(s){return s[0].toUpperCase()+s.slice(1);}
+
+const TAG_LABEL={passive:'Passive',action:'Action',reaction:'Reaction',fear:'Fear'};
+function tagHTML(k){return `<span class="ability-tag tag-${k}">${TAG_LABEL[k]}</span>`;}
+
+function addToQueue(id){
+  const a=ADV.find(x=>x.id===id);if(!a)return;
+  const cost=COSTS[a.type];
+  if(bpTotal-bpSpent<cost)return;
+  if(battleStarted){addCombatant(a);return;}
+  cart.push({...a,_iid:++iid});
+  syncBP();renderList();renderStage();statusBar();
+}
+function removeFromCart(_iid){
+  const idx=cart.findIndex(c=>c._iid===_iid);if(idx<0)return;
+  cart.splice(idx,1);syncBP();renderList();renderStage();statusBar();
+}
+
+function beginBattle(){
+  if(cart.length===0){openSidebar();return;}
+  battleStarted=true;round=1;
+  combatants=cart.map(c=>mkCombatant(c));cart=[];
+  document.getElementById('btn-begin').style.display='none';
+  document.getElementById('btn-reset').style.display='';
+  document.getElementById('btn-add-more').style.display='';
+  document.getElementById('round-badge').style.display='';
+  document.getElementById('round-num').textContent=1;
+  renderCombat();syncBP();renderList();statusBar();
+}
+function mkCombatant(a){return {...a,_iid:a._iid||++iid,hp_m:new Array(a.hp).fill(false),st_m:new Array(a.st).fill(false),defeated:false};}
+function addCombatant(a){combatants.push(mkCombatant({...a,_iid:++iid}));syncBP();renderList();renderCombat();statusBar();}
+function resetBattle(){
+  if(!confirm('Reset encounter?'))return;
+  battleStarted=false;round=1;cart=[];combatants=[];
+  document.getElementById('btn-begin').style.display='';
+  document.getElementById('btn-reset').style.display='none';
+  document.getElementById('btn-add-more').style.display='none';
+  document.getElementById('round-badge').style.display='none';
+  syncBP();renderList();renderStage();statusBar();
+}
+function advanceRound(){round++;document.getElementById('round-num').textContent=round;}
+
+function renderStage(){
+  const grid=document.getElementById('encounter-grid');const empty=document.getElementById('empty-state');
+  if(!battleStarted&&cart.length===0){grid.style.display='none';empty.style.display='flex';return;}
+  empty.style.display='none';grid.style.display='grid';
+  grid.innerHTML=cart.map(c=>`<div class="combat-card" style="border-style:dashed;opacity:.75"><button class="card-dismiss" onclick="removeFromCart(${c._iid})">✕</button><div class="card-header"><div class="card-name">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">HP <span>${c.hp}</span></span><span class="card-stat">ST <span>${c.st}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span></div><div style="font-size:12px;color:var(--text-muted);font-style:italic;text-align:center">Queued — hit ▶ Begin Battle</div></div>`).join('');
+}
+function renderCombat(){
+  const grid=document.getElementById('encounter-grid');const empty=document.getElementById('empty-state');
+  if(combatants.length===0&&cart.length===0){grid.style.display='none';empty.style.display='flex';return;}
+  empty.style.display='none';grid.style.display='grid';
+  grid.innerHTML=combatants.map(c=>combatCard(c)).join('');
+}
+function combatCard(c){
+  const thrStr=c.maj!=null?`${c.maj}/${c.sev??'—'}`:'—';
+  const hpDots=c.hp_m.map((m,i)=>`<div class="dot dot-hp${m?' marked':''}" onclick="toggleDot('hp','${c._iid}',${i})"></div>`).join('');
+  const stDots=c.st_m.map((m,i)=>`<div class="dot dot-stress${m?' marked':''}" onclick="toggleDot('st','${c._iid}',${i})"></div>`).join('');
+  return `<div class="combat-card${c.defeated?' defeated':''}" id="cc-${c._iid}"><button class="card-dismiss" onclick="removeCombatant('${c._iid}')">✕</button><div class="card-header"><div class="card-name">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">THR <span>${thrStr}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span><span class="card-stat"><span>${c.dmg}</span></span></div>${c.defeated?'<div class="defeated-banner">⚰ Defeated</div>':''}<div class="dots-section"><div class="dots-label" style="color:var(--hp-color)">HP · ${c.hp_m.filter(Boolean).length}/${c.hp}</div><div class="dots-row">${hpDots}</div></div><div class="dots-section"><div class="dots-label" style="color:var(--stress-color)">Stress · ${c.st_m.filter(Boolean).length}/${c.st}</div><div class="dots-row">${stDots}</div></div></div>`;
+}
+function toggleDot(kind,_iid,idx){
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
+  if(kind==='hp'){c.hp_m[idx]=!c.hp_m[idx];c.defeated=c.hp_m.every(Boolean);}
+  else{c.st_m[idx]=!c.st_m[idx];}
+  const el=document.getElementById(`cc-${_iid}`);if(el)el.outerHTML=combatCard(c);
+  statusBar();
+}
+function removeCombatant(_iid){
+  const idx=combatants.findIndex(x=>String(x._iid)===String(_iid));if(idx<0)return;
+  combatants.splice(idx,1);syncBP();renderList();renderCombat();statusBar();
+}
+function statusBar(){
+  document.getElementById('status-active').textContent=battleStarted?combatants.filter(c=>!c.defeated).length:cart.length;
+  document.getElementById('status-defeated').textContent=battleStarted?combatants.filter(c=>c.defeated).length:0;
+  syncBP();
+}
+
+// ═══════════════════════════════════════════════════════════
+// CUSTOM ADVERSARY SYSTEM
+// ═══════════════════════════════════════════════════════════
+var customAdv=[];
+var STORAGE_KEY='motherTree_customAdv';
+var featRowId=0;
+
+function loadCustomAdv(){
+  try{var s=localStorage.getItem(STORAGE_KEY);if(s)customAdv=JSON.parse(s);}catch(e){}
+  customAdv.forEach(function(a){if(!ADV.find(function(x){return x.id===a.id;}))ADV.push(a);});
+}
+function saveCustomAdvStorage(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(customAdv));}catch(e){}
+}
+
+function openCustomModal(editId){
+  document.getElementById('cm-modal-title').textContent=editId?'✦ Edit Custom Adversary':'✦ Create Custom Adversary';
+  if(editId){
+    var a=ADV.find(function(x){return x.id===editId;});if(!a)return;
+    document.getElementById('cm-name').value=a.name;
+    document.getElementById('cm-type').value=a.type;
+    document.getElementById('cm-motives').value=a.motives||'';
+    document.getElementById('cm-dc').value=a.dc||'';
+    document.getElementById('cm-hp').value=a.hp||'';
+    document.getElementById('cm-st').value=a.st||'';
+    document.getElementById('cm-maj').value=a.maj!=null?a.maj:'';
+    document.getElementById('cm-sev').value=a.sev!=null?a.sev:'';
+    document.getElementById('cm-atk').value=a.atk||'';
+    document.getElementById('cm-wpn').value=a.wpn||'';
+    document.getElementById('cm-dmg').value=a.dmg||'';
+    document.getElementById('cm-edit-id').value=editId;
+    document.getElementById('cm-feat-list').innerHTML='';
+    (a.feats||[]).forEach(function(f){addFeatRow(f);});
+  } else {
+    clearModal();
+  }
+  document.getElementById('custom-modal-bg').classList.add('open');
+  setTimeout(function(){document.getElementById('cm-name').focus();},50);
+}
+function closeCustomModal(){
+  document.getElementById('custom-modal-bg').classList.remove('open');
+  clearModal();
+}
+function clearModal(){
+  ['cm-name','cm-motives','cm-dc','cm-hp','cm-st','cm-maj','cm-sev','cm-atk','cm-wpn','cm-dmg']
+    .forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('cm-type').value='standard';
+  document.getElementById('cm-feat-list').innerHTML='';
+  document.getElementById('cm-edit-id').value='';
+}
+
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function addFeatRow(feat){
+  var id='fr-'+(++featRowId);
+  var k=(feat&&feat.k)||'action';
+  var n=(feat&&feat.n)||'';
+  var d=(feat&&feat.d)||'';
+  var row=document.createElement('div');
+  row.className='feat-row';
+  row.id=id;
+  row.innerHTML='<div class="feat-row-top">'
+    +'<select class="cm-select feat-select" id="'+id+'-k">'
+    +'<option value="passive"'+(k==='passive'?' selected':'')+'>Passive</option>'
+    +'<option value="action"'+(k==='action'?' selected':'')+'>Action</option>'
+    +'<option value="reaction"'+(k==='reaction'?' selected':'')+'>Reaction</option>'
+    +'<option value="fear"'+(k==='fear'?' selected':'')+'>Fear</option>'
+    +'</select>'
+    +'<input class="cm-input feat-name-input" id="'+id+'-n" placeholder="Ability name" value="'+escH(n)+'" maxlength="60">'
+    +'<button type="button" class="feat-remove" data-rowid="'+id+'" title="Remove">✕</button>'
+    +'</div>'
+    +'<textarea class="cm-textarea feat-desc-input" id="'+id+'-d" placeholder="Describe what this ability does…" rows="2">'+escH(d)+'</textarea>';
+  document.getElementById('cm-feat-list').appendChild(row);
+  // wire remove btn via event delegation (already handled below)
+}
+
+function saveCustomAdv(){
+  var name=document.getElementById('cm-name').value.trim();
+  if(!name){
+    document.getElementById('cm-name').focus();
+    document.getElementById('cm-name').style.borderColor='var(--fear)';
+    setTimeout(function(){document.getElementById('cm-name').style.borderColor='';},1200);
+    return;
+  }
+  var type=document.getElementById('cm-type').value;
+  var dc=parseInt(document.getElementById('cm-dc').value)||12;
+  var hp=parseInt(document.getElementById('cm-hp').value)||4;
+  var st=parseInt(document.getElementById('cm-st').value)||3;
+  var majV=document.getElementById('cm-maj').value.trim();
+  var sevV=document.getElementById('cm-sev').value.trim();
+  var maj=majV!==''?parseInt(majV):null;
+  var sev=sevV!==''?parseInt(sevV):null;
+  var atk=document.getElementById('cm-atk').value.trim()||'+0';
+  var wpn=document.getElementById('cm-wpn').value.trim()||'Attack · Melee';
+  var dmg=document.getElementById('cm-dmg').value.trim()||'1d6 phy';
+  var motives=document.getElementById('cm-motives').value.trim();
+  var feats=[];
+  document.querySelectorAll('#cm-feat-list .feat-row').forEach(function(row){
+    var rid=row.id;
+    var fk=document.getElementById(rid+'-k');
+    var fn=document.getElementById(rid+'-n');
+    var fd=document.getElementById(rid+'-d');
+    var fkv=fk?fk.value:'action';
+    var fnv=fn?fn.value.trim():'';
+    var fdv=fd?fd.value.trim():'';
+    if(fnv)feats.push({k:fkv,n:fnv,d:fdv});
+  });
+  var editId=document.getElementById('cm-edit-id').value;
+  if(editId){
+    var existIdx=ADV.findIndex(function(x){return x.id===editId;});
+    var custIdx=customAdv.findIndex(function(x){return x.id===editId;});
+    var updated={id:editId,name:name,type:type,dc:dc,hp:hp,st:st,maj:maj,sev:sev,atk:atk,wpn:wpn,dmg:dmg,motives:motives,feats:feats,_custom:true};
+    if(existIdx>=0)ADV[existIdx]=updated;
+    if(custIdx>=0)customAdv[custIdx]=updated;else customAdv.push(updated);
+  } else {
+    var id='custom-'+Date.now();
+    var adv={id:id,name:name,type:type,dc:dc,hp:hp,st:st,maj:maj,sev:sev,atk:atk,wpn:wpn,dmg:dmg,motives:motives,feats:feats,_custom:true};
+    ADV.push(adv);
+    customAdv.push(adv);
+  }
+  saveCustomAdvStorage();
+  closeCustomModal();
+  syncBP();renderList();buildFilters();
+}
+
+function deleteCustomAdv(id,e){
+  e.stopPropagation();
+  if(!confirm('Delete this custom adversary?'))return;
+  var ai=ADV.findIndex(function(x){return x.id===id;});if(ai>=0)ADV.splice(ai,1);
+  var ci=customAdv.findIndex(function(x){return x.id===id;});if(ci>=0)customAdv.splice(ci,1);
+  saveCustomAdvStorage();
+  syncBP();renderList();buildFilters();
+}
+
+// ── Unified renderList (replaces the earlier one) ─────────
+function renderList(){
+  var rem=bpTotal-bpSpent;
+  var filtered=filterType==='all'?ADV:ADV.filter(function(a){return a.type===filterType;});
+  var groups={};TYPE_ORDER.forEach(function(t){groups[t]=[];});
+  filtered.forEach(function(a){groups[a.type].push(a);});
+  var html='';
+  TYPE_ORDER.forEach(function(type){
+    var items=groups[type];if(!items.length)return;
+    html+='<div class="type-group"><div class="type-header"><span>'+ICONS[type]+'</span>'+cap(type)+' · '+COSTS[type]+'pt each</div>';
+    items.forEach(function(a){
+      var oop=rem<COSTS[a.type];
+      var thrStr=a.maj!=null?(''+a.maj+(a.sev!=null?'/'+a.sev:'/—')):'None';
+      var isOpen=expanded.has(a.id);
+      var abilities=(a.feats||[]).map(function(f){return '<div class="ability-item"><div class="ability-header">'+tagHTML(f.k)+'<span class="ability-name">'+f.n+'</span></div><div class="ability-desc">'+f.d+'</div></div>';}).join('');
+      var customBadge=a._custom?'<span class="custom-pill">Custom</span>':'';
+      var editBtn=a._custom
+        ?'<button class="adv-expand-strip" data-editid="'+a.id+'" title="Edit" style="font-size:13px">✎</button>'
+         +'<button class="adv-delete-btn" data-delid="'+a.id+'" title="Delete">🗑</button>'
+        :'';
+      html+='<div class="adv-card'+(oop?' out-of-budget':'')+'"><div class="adv-main">'
+        +'<div class="adv-add-zone"'+(oop?'':' data-addid="'+a.id+'"')+'>'
+        +'<div class="adv-top"><span class="adv-name">'+a.name+'</span>'+customBadge+'<span class="adv-cost-badge">'+COSTS[a.type]+'pt</span></div>'
+        +'<div class="adv-stats"><span class="adv-stat">DC<span>'+a.dc+'</span></span><span class="adv-stat">HP<span>'+a.hp+'</span></span><span class="adv-stat">ST<span>'+a.st+'</span></span><span class="adv-stat">THR<span>'+thrStr+'</span></span><span class="adv-stat">ATK<span>'+a.atk+'</span></span></div>'
+        +'<div class="adv-atk-line">'+a.dmg+' · '+a.wpn+'</div>'
+        +'</div>'
+        +editBtn
+        +'<button class="adv-expand-strip'+(isOpen?' open':'')+'" data-expandid="'+a.id+'" title="'+(isOpen?'Hide':'Show')+' abilities">'+(isOpen?'▲':'▼')+'</button>'
+        +'</div>'
+        +'<div class="adv-abilities'+(isOpen?' open':'')+'" id="ab-'+a.id+'">'+(a.motives?'<div class="motives-line">🎯 '+a.motives+'</div>':'')+abilities+'</div>'
+        +'</div>';
+    });
+    html+='</div>';
+  });
+  document.getElementById('adv-list').innerHTML=html;
+}
+
+// ── Single event-delegated click handler for adv-list ────
+document.addEventListener('click',function(e){
+  // add to queue
+  var addZone=e.target.closest('[data-addid]');
+  if(addZone){addToQueue(addZone.dataset.addid);return;}
+  // expand abilities
+  var expBtn=e.target.closest('[data-expandid]');
+  if(expBtn){toggleAbilitiesById(expBtn.dataset.expandid,expBtn);return;}
+  // edit custom
+  var editBtn=e.target.closest('[data-editid]');
+  if(editBtn){openCustomModal(editBtn.dataset.editid);return;}
+  // delete custom
+  var delBtn=e.target.closest('[data-delid]');
+  if(delBtn){deleteCustomAdv(delBtn.dataset.delid,e);return;}
+  // remove feat row
+  var removeBtn=e.target.closest('[data-rowid]');
+  if(removeBtn){document.getElementById(removeBtn.dataset.rowid)?.remove();return;}
+});
+
+function toggleAbilitiesById(id,btn){
+  expanded.has(id)?expanded.delete(id):expanded.add(id);
+  var panel=document.getElementById('ab-'+id);
+  var now=expanded.has(id);
+  if(panel)panel.classList.toggle('open',now);
+  if(btn){btn.classList.toggle('open',now);btn.textContent=now?'▲':'▼';}
+}
+
+// ── Wire modal buttons ────────────────────────────────────
+document.getElementById('cm-close-btn').addEventListener('click',closeCustomModal);
+document.getElementById('cm-cancel-btn').addEventListener('click',closeCustomModal);
+document.getElementById('cm-save-btn').addEventListener('click',saveCustomAdv);
+document.getElementById('cm-add-feat-btn').addEventListener('click',function(){addFeatRow();});
+document.getElementById('custom-modal-bg').addEventListener('click',function(e){
+  if(e.target===document.getElementById('custom-modal-bg'))closeCustomModal();
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCustomModal();});
+
+// ── Init ──────────────────────────────────────────────────
+loadCustomAdv();
+(function init(){updateBP();buildFilters();renderList();renderStage();statusBar();})();
+</script>
+</body>
+</html>
