@@ -36,5 +36,11 @@ if (!fs.existsSync(DIST)) fs.mkdirSync(DIST);
 const outPath = path.join(DIST, 'index.html');
 fs.writeFileSync(outPath, bundle, 'utf8');
 
+// Copy PWA files to dist/
+for (const f of ['manifest.json', 'sw.js', 'icon.svg']) {
+  fs.copyFileSync(path.join(ROOT, f), path.join(DIST, f));
+}
+
 const kb = (fs.statSync(outPath).size / 1024).toFixed(1);
 console.log(`Built: dist/index.html  (${kb} KB)`);
+console.log(`Copied: manifest.json, sw.js, icon.svg → dist/`);
