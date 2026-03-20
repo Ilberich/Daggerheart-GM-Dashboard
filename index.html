@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Mother Tree — GM Interface</title>
+<!-- All dependencies are local — no internet required.
+     Fonts: Crimson Pro → Georgia → serif | Cinzel → serif | JetBrains Mono → monospace (fallbacks already in CSS) -->
+<script src="vendor/marked-compat.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- DROP OVERLAY -->
+<div id="drop-overlay">
+  <div class="drop-icon">📜</div>
+  <div class="drop-label">Drop .MD Files Here</div>
+  <div class="drop-sub">Each file will open as a new lore tab</div>
+</div>
+
+<!-- TAB BAR -->
+<div id="tabbar">
+  <div class="tab active" data-tab="combat" onclick="switchTab('combat')">
+    <span class="tab-icon">⚔</span>
+    <span class="tab-title">Combat Tracker</span>
+  </div>
+  <!-- Dynamic tabs inserted here -->
+  <div id="dynamic-tabs"></div>
+
+  <label id="tab-upload" title="Upload .md files to open as lore tabs">
+    <span>＋</span><span>Add Lore Tab</span>
+    <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple onchange="handleFileUpload(this.files)">
+  </label>
+
+  <div id="gm-badge">
+    <span>THE MOTHER TREE</span>
+    <strong>GM INTERFACE</strong>
+  </div>
+</div>
+
+<!-- COMBAT TAB PANEL -->
+<div class="tab-panel active" id="panel-combat">
+  <div id="combat-tab-panel" style="display:flex;flex:1;overflow:hidden;">
+
+    <div id="sidebar">
+      <div id="sidebar-inner">
+        <div class="sidebar-header">
+          <button id="sidebar-toggle" title="Toggle Arsenal" onclick="toggleSidebar()">☰</button>
+          <h2>⚔ Adversary Arsenal</h2>
+        </div>
+        <div class="bp-panel">
+          <div class="bp-row">
+            <span class="bp-label">Players:</span>
+            <input type="number" class="bp-input" id="player-count" value="4" min="1" max="10" onchange="updateBP()">
+            <span class="bp-total">Total: <span id="bp-total">14</span> pts</span>
+          </div>
+          <div class="bp-spent">Used: <span id="bp-spent" style="color:var(--fear)">0</span> · Remaining: <span id="bp-rem" style="color:var(--green)">14</span></div>
+          <div class="bp-bar-wrap"><div class="bp-bar" id="bp-bar" style="width:0%"></div></div>
+        </div>
+        <div class="cost-legend">
+          <div class="cost-legend-title">Battle Point Costs</div>
+          <div class="cost-items">
+            <div class="cost-pill">Minion/Social/Support <b>1pt</b></div>
+            <div class="cost-pill">Horde/Ranged/Skulk/Standard <b>2pt</b></div>
+            <div class="cost-pill">Leader <b>3pt</b></div>
+            <div class="cost-pill">Bruiser <b>4pt</b></div>
+            <div class="cost-pill">Solo <b>5pt</b></div>
+          </div>
+        </div>
+        <div class="filter-row" id="filter-row"></div>
+        <button class="create-custom-btn" onclick="openCustomModal()">
+          <span>✦</span><span>Create Custom Adversary</span>
+        </button>
+        <div class="adv-list" id="adv-list"></div>
+      </div>
+    </div>
+
+    <div id="combat-main">
+      <div id="topbar">
+        <h1>Combat Tracker</h1>
+        <div class="round-badge" id="round-badge" onclick="advanceRound()" title="Click to advance round" style="display:none">Round <span id="round-num">1</span></div>
+        <button class="topbar-btn btn-add-more" id="btn-add-more" onclick="openSidebar()" style="display:none">+ Adversaries</button>
+        <button class="topbar-btn btn-primary btn-begin" id="btn-begin" onclick="beginBattle()">▶ Begin Battle</button>
+        <button class="topbar-btn btn-danger" id="btn-reset" onclick="resetBattle()" style="display:none">↺ Reset</button>
+      </div>
+      <div id="combat-area">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">🗡</div>
+          <div class="empty-title">No Encounter Built</div>
+          <div class="empty-sub">Open the sidebar, browse adversaries, spend your Battle Points, then hit <strong>▶ Begin Battle</strong>.</div>
+        </div>
+        <div id="encounter-grid" style="display:none"></div>
+      </div>
+      <div id="status-bar">
+        <div class="status-item">Active: <span id="status-active">0</span></div>
+        <div class="status-item">Defeated: <span id="status-defeated">0</span></div>
+        <div class="status-item">Budget remaining: <span id="status-bp">14</span> pts</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Dynamic tab panels injected here -->
+<div id="dynamic-panels"></div>
+
+<!-- ═══════════════════════════════════════════════
+     CUSTOM ADVERSARY MODAL
+═══════════════════════════════════════════════ -->
+<div id="custom-modal-bg">
+  <div id="custom-modal">
+    <div class="cm-header">
+      <span class="cm-title" id="cm-modal-title">✦ Create Custom Adversary</span>
+      <button type="button" class="cm-close" id="cm-close-btn">✕</button>
+    </div>
+    <div class="cm-body">
+
+      <!-- identity -->
+      <div>
+        <div class="cm-section-title">Identity</div>
+        <div class="cm-row">
+          <div class="cm-field wide">
+            <label class="cm-label">Name *</label>
+            <input class="cm-input" id="cm-name" placeholder="e.g. Rust Crawler" maxlength="60">
+          </div>
+          <div class="cm-field">
+            <label class="cm-label">Type *</label>
+            <select class="cm-select" id="cm-type">
+              <option value="solo">Solo (5pt)</option>
+              <option value="bruiser">Bruiser (4pt)</option>
+              <option value="leader">Leader (3pt)</option>
+              <option value="horde">Horde (2pt)</option>
+              <option value="ranged">Ranged (2pt)</option>
+              <option value="skulk">Skulk (2pt)</option>
+              <option value="standard" selected>Standard (2pt)</option>
+              <option value="minion">Minion (1pt)</option>
+              <option value="support">Support (1pt)</option>
+              <option value="social">Social (1pt)</option>
+            </select>
+          </div>
+        </div>
+        <div class="cm-row" style="margin-top:8px">
+          <div class="cm-field full">
+            <label class="cm-label">Description / Motives</label>
+            <input class="cm-input" id="cm-motives" placeholder="e.g. Scavenge, ambush, drag into dark">
+          </div>
+        </div>
+      </div>
+
+      <!-- stats -->
+      <div>
+        <div class="cm-section-title">Stats</div>
+        <div class="cm-row">
+          <div class="cm-field"><label class="cm-label">Difficulty</label><input class="cm-input" id="cm-dc" type="number" placeholder="12" min="1" max="30"></div>
+          <div class="cm-field"><label class="cm-label">HP</label><input class="cm-input" id="cm-hp" type="number" placeholder="4" min="1" max="20"></div>
+          <div class="cm-field"><label class="cm-label">Stress</label><input class="cm-input" id="cm-st" type="number" placeholder="3" min="1" max="10"></div>
+          <div class="cm-field"><label class="cm-label">Major THR</label><input class="cm-input" id="cm-maj" type="number" placeholder="6" min="1"></div>
+          <div class="cm-field"><label class="cm-label">Severe THR</label><input class="cm-input" id="cm-sev" type="number" placeholder="12" min="1"></div>
+        </div>
+      </div>
+
+      <!-- attack -->
+      <div>
+        <div class="cm-section-title">Attack</div>
+        <div class="cm-row">
+          <div class="cm-field"><label class="cm-label">ATK Bonus</label><input class="cm-input" id="cm-atk" placeholder="+2" maxlength="6"></div>
+          <div class="cm-field wide"><label class="cm-label">Weapon · Range</label><input class="cm-input" id="cm-wpn" placeholder="e.g. Rusted Claws · Melee"></div>
+          <div class="cm-field"><label class="cm-label">Damage</label><input class="cm-input" id="cm-dmg" placeholder="e.g. 1d8+3 phy"></div>
+        </div>
+      </div>
+
+      <!-- abilities -->
+      <div>
+        <div class="cm-section-title">Abilities</div>
+        <div class="feat-list" id="cm-feat-list"></div>
+        <button type="button" class="cm-add-feat" id="cm-add-feat-btn">＋ Add Ability</button>
+      </div>
+
+    </div>
+    <div class="cm-footer">
+      <input type="hidden" id="cm-edit-id">
+      <button type="button" class="cm-btn cm-btn-cancel" id="cm-cancel-btn">Cancel</button>
+      <button type="button" class="cm-btn cm-btn-save" id="cm-save-btn">Save Adversary</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
