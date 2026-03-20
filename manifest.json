@@ -1,0 +1,18 @@
+{
+  "name": "The Mother Tree — GM Interface",
+  "short_name": "Mother Tree",
+  "description": "Daggerheart GM Dashboard — offline combat tracker and lore viewer",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1714",
+  "theme_color": "#1a1714",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

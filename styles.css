@@ -1,4 +1,5 @@
 
+/* §ROOT_VARS */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --bg:#0d0f14;--surface:#141720;--surface2:#1c2030;--surface3:#232840;
@@ -14,7 +15,7 @@
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimson Pro',Georgia,serif;overflow:hidden;}
 
-/* ═══════════════════════════════════════════════
+/* §TAB_BAR ═══════════════════════════════════════════════
    TAB BAR
 ═══════════════════════════════════════════════ */
 #tabbar{
@@ -78,7 +79,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 #gm-badge span{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;color:var(--text-muted);}
 #gm-badge strong{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.1em;color:var(--gold);}
 
-/* ═══════════════════════════════════════════════
+/* §TAB_PANELS ═══════════════════════════════════════════════
    TAB PANELS
 ═══════════════════════════════════════════════ */
 .tab-panel{
@@ -88,7 +89,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 }
 .tab-panel.active{display:flex;flex-direction:column;}
 
-/* ═══════════════════════════════════════════════
+/* §DROP_OVERLAY ═══════════════════════════════════════════════
    DROP OVERLAY
 ═══════════════════════════════════════════════ */
 #drop-overlay{
@@ -103,7 +104,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 #drop-overlay .drop-label{font-family:'Cinzel',serif;font-size:22px;letter-spacing:.15em;color:var(--hope);font-weight:600;}
 #drop-overlay .drop-sub{font-size:15px;color:var(--text-muted);}
 
-/* ═══════════════════════════════════════════════
+/* §MARKDOWN ═══════════════════════════════════════════════
    MARKDOWN VIEWER
 ═══════════════════════════════════════════════ */
 .md-panel{
@@ -226,7 +227,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 }
 .md-meta::before{content:'📄';}
 
-/* ═══════════════════════════════════════════════
+/* §COMBAT ═══════════════════════════════════════════════
    COMBAT TRACKER STYLES (inside tab panel)
 ═══════════════════════════════════════════════ */
 #combat-tab-panel{flex-direction:row;}
@@ -377,7 +378,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 @keyframes hopePulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}50%{box-shadow:0 0 10px 4px rgba(99,102,241,.45)}}
 .btn-begin{animation:hopePulse 2s ease-in-out infinite;}
 
-/* TYPE COLORS */
+/* §TYPE_COLORS */
 .tc-solo    {background:rgba(224,90,106,.15);color:#e05a6a;border-color:rgba(224,90,106,.4);}
 .tc-bruiser {background:rgba(212,168,67,.15);color:#d4a843;border-color:rgba(212,168,67,.4);}
 .tc-leader  {background:rgba(99,102,241,.18);color:#a5a8ff;border-color:rgba(99,102,241,.4);}
@@ -389,7 +390,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 .tc-support {background:rgba(60,160,200,.15);color:#60b8e0;border-color:rgba(60,160,200,.4);}
 .tc-social  {background:rgba(200,100,160,.15);color:#e080b8;border-color:rgba(200,100,160,.4);}
 
-/* ═══════════════════════════════════════════════
+/* §MODAL ═══════════════════════════════════════════════
    CUSTOM ADVERSARY MODAL
 ═══════════════════════════════════════════════ */
 #custom-modal-bg{
@@ -502,7 +503,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 /* edit modal mode */
 #cm-edit-id{display:none;}
 
-/* ═══════════════════════════════════════════════
+/* §HINT ═══════════════════════════════════════════════
    WELCOME / DROP HINT ON NOTES TAB
 ═══════════════════════════════════════════════ */
 .md-welcome{
@@ -523,10 +524,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 .hint-card .hc-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
 .hint-card .hc-val{font-size:13px;color:var(--text-dim);}
 
-/* ═══════════════════════════════════════════════
+/* §MOBILE_768 ═══════════════════════════════════════════════
    RESPONSIVE — MOBILE (≤768px)
 ═══════════════════════════════════════════════ */
 @media(max-width:768px){
+  body{overscroll-behavior:none;} /* prevent iOS bounce scroll */
   #gm-badge{display:none;}
   .tab-title{max-width:90px;}
   #tab-upload span:last-of-type{display:none;}
@@ -546,6 +548,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
   }
   #sidebar-inner{width:min(340px,100vw);}
 
+  /* Tap-outside overlay to dismiss sidebar */
+  #sidebar-overlay{
+    display:none;position:fixed;inset:0;z-index:99;
+    background:rgba(0,0,0,.45);
+  }
+  #sidebar-overlay.active{display:block;}
+
   /* Larger tap targets for dots */
   .dot{width:32px;height:32px;}
   .dot,.tab-close,.card-dismiss,.filter-btn,.topbar-btn{touch-action:manipulation;}
@@ -556,7 +565,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
   #status-bar{flex-wrap:wrap;gap:6px;padding:6px 12px;}
 }
 
-/* ═══════════════════════════════════════════════
+/* §MOBILE_480 ═══════════════════════════════════════════════
    RESPONSIVE — SMALL MOBILE (≤480px)
 ═══════════════════════════════════════════════ */
 @media(max-width:480px){

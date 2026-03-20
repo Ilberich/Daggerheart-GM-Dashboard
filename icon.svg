@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="24" fill="#1a1714"/>
+  <!-- trunk -->
+  <rect x="88" y="120" width="16" height="44" rx="4" fill="#c4963a"/>
+  <!-- main canopy layers -->
+  <polygon points="96,18 130,72 62,72" fill="#4a7c59"/>
+  <polygon points="96,38 136,90 56,90" fill="#3d6b4a"/>
+  <polygon points="96,58 142,112 50,112" fill="#2d5238"/>
+  <!-- gold highlights on leaves -->
+  <circle cx="96" cy="28" r="5" fill="#c4963a" opacity="0.6"/>
+  <circle cx="78" cy="58" r="3" fill="#c4963a" opacity="0.4"/>
+  <circle cx="114" cy="54" r="3" fill="#c4963a" opacity="0.4"/>
+  <circle cx="68" cy="88" r="3" fill="#c4963a" opacity="0.35"/>
+  <circle cx="124" cy="84" r="3" fill="#c4963a" opacity="0.35"/>
+</svg>

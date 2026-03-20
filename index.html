@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mother Tree">
 <title>The Mother Tree — GM Interface</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <!-- All dependencies are local — no internet required.
      Fonts: Crimson Pro → Georgia → serif | Cinzel → serif | JetBrains Mono → monospace (fallbacks already in CSS) -->
 <script src="vendor/marked-compat.js"></script>
@@ -42,6 +47,7 @@
 <div class="tab-panel active" id="panel-combat">
   <div id="combat-tab-panel" style="display:flex;flex:1;overflow:hidden;">
 
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
     <div id="sidebar">
       <div id="sidebar-inner">
         <div class="sidebar-header">
@@ -189,5 +195,10 @@
 </div>
 
 <script src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('./sw.js');
+}
+</script>
 </body>
 </html>
