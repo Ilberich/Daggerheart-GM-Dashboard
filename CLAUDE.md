@@ -13,7 +13,68 @@
 | `styles.css` | All CSS — custom properties, layout, component styles |
 | `app.js` | All JavaScript — tab system, combat tracker, session persistence |
 | `vendor/marked-compat.js` | Local Markdown parser (drop-in for marked.js v9.1.6) |
+| `build.js` | Node.js bundle script — produces `dist/index.html` |
+| `dist/index.html` | **Self-contained mobile bundle** — all CSS+JS inlined, no external files needed |
 | `GM_DASHBOARD_TODO.md` | Ordered task list with status |
+
+---
+
+## Build System
+
+The dashboard must be bundled for reliable mobile use. When opened via `file://`, cloud sync,
+AirDrop, or a bare HTTP server, relative asset paths can silently fail — leaving a white page
+with no styles. The bundle eliminates this by inlining everything into one HTML file.
+
+**Run the build:**
+```
+node build.js
+```
+Output: `dist/index.html` — single self-contained file, no external dependencies.
+
+**When to rebuild:** any time you edit `styles.css`, `app.js`, or `vendor/marked-compat.js`.
+`index.html` changes are picked up automatically by the build script.
+
+**For mobile:** share or open `dist/index.html` — not `index.html`.
+
+---
+
+## Grep Anchor Map
+
+Every major section in the bundle carries a `§ANCHOR_NAME` comment.
+Use these to jump directly to any section in `dist/index.html`:
+
+```
+grep -n '§ROOT_VARS'      dist/index.html   # CSS: :root custom properties
+grep -n '§TAB_BAR'        dist/index.html   # CSS: #tabbar, .tab, #tab-upload
+grep -n '§TAB_PANELS'     dist/index.html   # CSS: .tab-panel
+grep -n '§DROP_OVERLAY'   dist/index.html   # CSS: #drop-overlay
+grep -n '§MARKDOWN'       dist/index.html   # CSS + JS: markdown viewer & file upload
+grep -n '§COMBAT'         dist/index.html   # CSS: #sidebar, #combat-main, .combat-card, .dot
+grep -n '§TYPE_COLORS'    dist/index.html   # CSS: .tc-solo … .tc-social
+grep -n '§MODAL'          dist/index.html   # CSS: #custom-modal-bg, .cm-*
+grep -n '§HINT'           dist/index.html   # CSS: .md-welcome, .hint-grid
+grep -n '§MOBILE_768'     dist/index.html   # CSS: @media(max-width:768px)
+grep -n '§MOBILE_480'     dist/index.html   # CSS: @media(max-width:480px)
+grep -n '§VENDOR_MARKED'  dist/index.html   # JS: inlined marked-compat.js parser
+grep -n '§APP_JS'         dist/index.html   # JS: start of inlined app.js
+grep -n '§TAB_SYSTEM'     dist/index.html   # JS: switchTab, addTab, closeTab
+grep -n '§COMBAT_DATA'    dist/index.html   # JS: COSTS, TYPE_ORDER, ICONS, ADV[]
+grep -n '§COMBAT_STATE'   dist/index.html   # JS: global state variables
+grep -n '§BP_SIDEBAR'     dist/index.html   # JS: updateBP, syncBP, toggleSidebar
+grep -n '§ENCOUNTER_QUEUE' dist/index.html  # JS: addToQueue, removeFromCart, renderStage
+grep -n '§COMBAT_FLOW'    dist/index.html   # JS: beginBattle, mkCombatant, resetBattle
+grep -n '§COMBAT_RENDER'  dist/index.html   # JS: renderCombat, combatCard, toggleDot
+grep -n '§CUSTOM_ADV'     dist/index.html   # JS: custom adversary modal & persistence
+grep -n '§SESSION'        dist/index.html   # JS: saveSession, loadSession
+grep -n '§ADV_LIST'       dist/index.html   # JS: renderList (Arsenal sidebar)
+grep -n '§INIT'           dist/index.html   # JS: init(), loadCustomAdv(), startup
+```
+
+The same anchors exist in the source files (`styles.css`, `app.js`) for editing:
+```
+grep -n '§BP_SIDEBAR' app.js
+grep -n '§MOBILE_768' styles.css
+```
 
 ---
 

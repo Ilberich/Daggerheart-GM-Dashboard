@@ -1,3 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>The Mother Tree — GM Interface</title>
+<!-- All dependencies are local — no internet required.
+     Fonts: Crimson Pro → Georgia → serif | Cinzel → serif | JetBrains Mono → monospace (fallbacks already in CSS) -->
+<script>/* §VENDOR_MARKED */
+/*!
+ * marked-compat.js — Drop-in replacement for marked.js (API-compatible subset)
+ * Supports: headings, paragraphs, bold, italic, code, fenced code blocks,
+ *           blockquotes, ordered/unordered lists, tables (GFM), hr, links, images.
+ * API: marked.setOptions({breaks, gfm}), marked.parse(markdown) → html string
+ */
+(function (global) {
+  'use strict';
+
+  var _opts = { breaks: false, gfm: true };
+
+  /* ── Helpers ─────────────────────────────────────────── */
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ── Inline parser ───────────────────────────────────── */
+  function inline(text) {
+    // Escape raw HTML-like angle brackets that aren't tags
+    // Bold + italic
+    text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    text = text.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+    // Bold
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    // Italic
+    text = text.replace(/\*([^\*\n]+?)\*/g, '<em>$1</em>');
+    text = text.replace(/_([^_\n]+?)_/g, '<em>$1</em>');
+    // Strikethrough
+    text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    // Inline code (do after bold/italic to avoid conflicts)
+    text = text.replace(/`([^`]+)`/g, function (_, code) {
+      return '<code>' + esc(code) + '</code>';
+    });
+    // Images before links
+    text = text.replace(/!\[([^\]]*)\]\(([^\)]+)\)/g, '<img src="$2" alt="$1">');
+    // Links
+    text = text.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>');
+    // Hard line breaks: two spaces + newline OR backslash + newline
+    text = text.replace(/  \n/g, '<br>\n');
+    text = text.replace(/\\\n/g, '<br>\n');
+    // Soft line breaks (when breaks:true)
+    if (_opts.breaks) {
+      text = text.replace(/([^\n>])\n(?=[^\n])/g, '$1<br>\n');
+    }
+    return text;
+  }
+
+  /* ── Block parser ────────────────────────────────────── */
+  function block(md) {
+    var out = '';
+    var lines = md.split('\n');
+    var i = 0;
+
+    function peek() { return i < lines.length ? lines[i] : null; }
+    function consume() { return lines[i++]; }
+
+    while (i < lines.length) {
+      var line = peek();
+
+      // Blank line
+      if (line.trim() === '') { consume(); continue; }
+
+      // Fenced code block ```
+      if (/^(`{3,}|~{3,})/.test(line)) {
+        var fence = line.match(/^(`{3,}|~{3,})/)[1];
+        var lang = line.slice(fence.length).trim();
+        consume();
+        var codeLines = [];
+        while (i < lines.length && !lines[i].startsWith(fence)) {
+          codeLines.push(lines[i]);
+          i++;
+        }
+        if (i < lines.length) consume(); // closing fence
+        out += '<pre><code' + (lang ? ' class="language-' + esc(lang) + '"' : '') + '>' +
+          esc(codeLines.join('\n')) + '</code></pre>\n';
+        continue;
+      }
+
+      // Blockquote
+      if (/^>\s?/.test(line)) {
+        var bqLines = [];
+        while (i < lines.length && /^>\s?/.test(lines[i])) {
+          bqLines.push(lines[i].replace(/^>\s?/, ''));
+          i++;
+        }
+        out += '<blockquote>' + block(bqLines.join('\n')) + '</blockquote>\n';
+        continue;
+      }
+
+      // ATX Heading
+      var hm = line.match(/^(#{1,6})\s+(.+?)(?:\s+#+)?$/);
+      if (hm) {
+        consume();
+        var lvl = hm[1].length;
+        out += '<h' + lvl + '>' + inline(hm[2].trim()) + '</h' + lvl + '>\n';
+        continue;
+      }
+
+      // Setext heading (underline style)
+      if (i + 1 < lines.length) {
+        var nextLine = lines[i + 1];
+        if (/^={3,}\s*$/.test(nextLine)) {
+          out += '<h1>' + inline(line.trim()) + '</h1>\n';
+          i += 2; continue;
+        }
+        if (/^-{3,}\s*$/.test(nextLine) && line.trim() !== '') {
+          out += '<h2>' + inline(line.trim()) + '</h2>\n';
+          i += 2; continue;
+        }
+      }
+
+      // Horizontal rule (must come before list check for -)
+      if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line.trim())) {
+        consume();
+        out += '<hr>\n';
+        continue;
+      }
+
+      // Unordered list
+      if (/^[-*+]\s/.test(line)) {
+        out += '<ul>\n';
+        var listIndent = line.match(/^([-*+])\s/)[0].length;
+        while (i < lines.length && /^[-*+]\s/.test(lines[i])) {
+          var item = lines[i].slice(listIndent).trimEnd();
+          consume();
+          // Collect continuation lines
+          while (i < lines.length && /^\s{2,}/.test(lines[i])) {
+            item += '\n' + lines[i].replace(/^\s{2}/, '');
+            consume();
+          }
+          // If item contains a newline it's a loose list item
+          var itemHtml = item.indexOf('\n') >= 0
+            ? block(item)
+            : '<p>' + inline(item) + '</p>';
+          // Unwrap single <p> for tight lists
+          itemHtml = itemHtml.replace(/^<p>([\s\S]*?)<\/p>\n?$/, '$1');
+          out += '<li>' + itemHtml + '</li>\n';
+        }
+        out += '</ul>\n';
+        continue;
+      }
+
+      // Ordered list
+      if (/^\d+\.\s/.test(line)) {
+        out += '<ol>\n';
+        while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+          var oitem = lines[i].replace(/^\d+\.\s/, '').trimEnd();
+          consume();
+          while (i < lines.length && /^\s{3,}/.test(lines[i])) {
+            oitem += '\n' + lines[i].replace(/^\s{3}/, '');
+            consume();
+          }
+          var ohtml = oitem.indexOf('\n') >= 0 ? block(oitem) : inline(oitem);
+          out += '<li>' + ohtml + '</li>\n';
+        }
+        out += '</ol>\n';
+        continue;
+      }
+
+      // GFM Table
+      if (_opts.gfm && /\|/.test(line) && i + 1 < lines.length && /^[\|\-\:\s]+$/.test(lines[i + 1])) {
+        var headerCells = line.replace(/^\||\|$/g, '').split('|').map(function (s) { return s.trim(); });
+        var sepLine = lines[i + 1];
+        var aligns = sepLine.replace(/^\||\|$/g, '').split('|').map(function (s) {
+          s = s.trim();
+          if (/^:-+:$/.test(s)) return 'center';
+          if (/^-+:$/.test(s)) return 'right';
+          if (/^:-+$/.test(s)) return 'left';
+          return '';
+        });
+        i += 2;
+        out += '<table>\n<thead>\n<tr>\n';
+        headerCells.forEach(function (h, ci) {
+          var align = aligns[ci] ? ' style="text-align:' + aligns[ci] + '"' : '';
+          out += '<th' + align + '>' + inline(h) + '</th>\n';
+        });
+        out += '</tr>\n</thead>\n<tbody>\n';
+        while (i < lines.length && /\|/.test(lines[i]) && lines[i].trim() !== '') {
+          var rowCells = lines[i].replace(/^\||\|$/g, '').split('|').map(function (s) { return s.trim(); });
+          i++;
+          out += '<tr>\n';
+          rowCells.forEach(function (c, ci) {
+            var align = (aligns[ci]) ? ' style="text-align:' + aligns[ci] + '"' : '';
+            out += '<td' + align + '>' + inline(c) + '</td>\n';
+          });
+          out += '</tr>\n';
+        }
+        out += '</tbody>\n</table>\n';
+        continue;
+      }
+
+      // Paragraph: collect until blank line or block element
+      var paraLines = [];
+      while (i < lines.length) {
+        var pl = lines[i];
+        if (pl.trim() === '') break;
+        if (/^#{1,6}\s/.test(pl)) break;
+        if (/^(`{3,}|~{3,})/.test(pl)) break;
+        if (/^>\s?/.test(pl)) break;
+        if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(pl.trim())) break;
+        if (/^[-*+]\s/.test(pl)) break;
+        if (/^\d+\.\s/.test(pl)) break;
+        paraLines.push(pl);
+        i++;
+      }
+      if (paraLines.length) {
+        out += '<p>' + inline(paraLines.join('\n').trim()) + '</p>\n';
+      }
+    }
+
+    return out;
+  }
+
+  /* ── Public API (matches marked.js) ─────────────────── */
+  var marked = {
+    setOptions: function (opts) {
+      if (opts) Object.assign(_opts, opts);
+    },
+    parse: function (src) {
+      if (typeof src !== 'string') return '';
+      return block(src);
+    }
+  };
+
+  // CommonJS / browser global
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = marked;
+  } else {
+    global.marked = marked;
+  }
+
+}(typeof window !== 'undefined' ? window : this));
+
+</script>
+<style>/* §STYLES */
+
+/* §ROOT_VARS */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0f14;--surface:#141720;--surface2:#1c2030;--surface3:#232840;
+  --border:#2a3050;--border2:#363d5e;
+  --text:#e2e4f0;--text-dim:#c0c4d8;--text-muted:#8890b0;
+  --hope:#6366f1;--hope-dim:#4a4db8;--hope-glow:rgba(99,102,241,.35);
+  --fear:#e05a6a;--fear-dim:#a83040;--fear-glow:rgba(224,90,106,.35);
+  --gold:#d4a843;--gold-dim:#9a7520;
+  --green:#4caf82;--green-dim:#2d7a55;
+  --hp-color:#e05a6a;--stress-color:#6366f1;
+  --sidebar-w:400px;
+  --tabbar-h:48px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimson Pro',Georgia,serif;overflow:hidden;}
+
+/* §TAB_BAR ═══════════════════════════════════════════════
+   TAB BAR
+═══════════════════════════════════════════════ */
+#tabbar{
+  position:fixed;top:0;left:0;right:0;height:var(--tabbar-h);
+  background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:stretch;z-index:200;
+  overflow-x:auto;overflow-y:hidden;
+  scrollbar-width:none;padding-top:5px;
+}
+#tabbar::-webkit-scrollbar{display:none;}
+
+.tab{
+  display:flex;align-items:center;gap:7px;
+  padding:0 14px;
+  border-radius:8px 8px 0 0;
+  border:1px solid transparent;border-bottom:none;
+  margin:0 1px;
+  cursor:pointer;font-size:13px;font-weight:600;
+  color:var(--text-muted);letter-spacing:.03em;
+  white-space:nowrap;min-width:0;position:relative;
+  transition:color .15s,background .15s,border-color .15s;
+  font-family:'Crimson Pro',serif;
+  user-select:none;flex-shrink:0;
+}
+.tab:hover{color:var(--text-dim);background:var(--surface2);border-color:var(--border);}
+.tab.active{
+  color:var(--text);background:var(--bg);
+  border-top:2px solid var(--hope);
+  border-left:1px solid var(--border);border-right:1px solid var(--border);
+  border-bottom:1px solid var(--bg);
+  margin-bottom:-1px;
+}
+.tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--bg);}
+.tab-icon{font-size:14px;flex-shrink:0;}
+.tab-title{max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+.tab-close{
+  width:18px;height:18px;border-radius:50%;border:none;
+  background:transparent;color:var(--text-muted);font-size:13px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;flex-shrink:0;line-height:1;
+  padding:0;
+}
+.tab-close:hover{background:rgba(224,90,106,.2);color:var(--fear);}
+
+/* Upload button */
+#tab-upload{
+  display:flex;align-items:center;gap:6px;padding:0 14px;
+  cursor:pointer;color:var(--text-muted);font-size:12px;
+  border-left:1px solid var(--border);border-right:1px solid var(--border);
+  transition:all .15s;
+  font-family:'Crimson Pro',serif;white-space:nowrap;flex-shrink:0;
+}
+#tab-upload:hover{color:var(--gold);background:rgba(212,168,67,.06);}
+#tab-upload-input{display:none;}
+
+/* GM title badge */
+#gm-badge{
+  margin-left:auto;padding:0 18px;display:flex;align-items:center;gap:8px;
+  border-left:1px solid var(--border);flex-shrink:0;
+}
+#gm-badge span{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;color:var(--text-muted);}
+#gm-badge strong{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.1em;color:var(--gold);}
+
+/* §TAB_PANELS ═══════════════════════════════════════════════
+   TAB PANELS
+═══════════════════════════════════════════════ */
+.tab-panel{
+  display:none;position:fixed;
+  top:var(--tabbar-h);left:0;right:0;bottom:0;
+  overflow:hidden;
+}
+.tab-panel.active{display:flex;flex-direction:column;}
+
+/* §DROP_OVERLAY ═══════════════════════════════════════════════
+   DROP OVERLAY
+═══════════════════════════════════════════════ */
+#drop-overlay{
+  display:none;position:fixed;inset:0;z-index:1000;
+  background:rgba(10,12,18,.92);
+  border:3px dashed var(--hope);
+  flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;pointer-events:none;
+}
+#drop-overlay.active{display:flex;}
+#drop-overlay .drop-icon{font-size:56px;opacity:.7;}
+#drop-overlay .drop-label{font-family:'Cinzel',serif;font-size:22px;letter-spacing:.15em;color:var(--hope);font-weight:600;}
+#drop-overlay .drop-sub{font-size:15px;color:var(--text-muted);}
+
+/* §MARKDOWN ═══════════════════════════════════════════════
+   MARKDOWN VIEWER
+═══════════════════════════════════════════════ */
+.md-panel{
+  flex:1;overflow-y:auto;
+  padding:40px;
+  background:var(--bg);
+}
+.md-panel::-webkit-scrollbar{width:6px;}
+.md-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+.md-content{
+  max-width:820px;margin:0 auto;
+}
+
+/* Heading styles */
+.md-content h1{
+  font-family:'Cinzel',serif;font-size:32px;font-weight:700;
+  color:var(--text);letter-spacing:.08em;margin-bottom:24px;padding-bottom:12px;
+  border-bottom:1px solid var(--border);line-height:1.3;
+}
+.md-content h2{
+  font-family:'Cinzel',serif;font-size:22px;font-weight:600;
+  color:var(--text-dim);letter-spacing:.06em;margin:32px 0 12px;
+  padding-bottom:6px;border-bottom:1px solid var(--border);
+}
+.md-content h3{
+  font-family:'Cinzel',serif;font-size:16px;font-weight:600;
+  color:var(--gold);letter-spacing:.06em;margin:24px 0 10px;
+  text-transform:uppercase;
+}
+.md-content h4{
+  font-size:16px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;
+}
+
+/* Body text */
+.md-content p{
+  font-size:16px;line-height:1.75;color:var(--text-dim);
+  margin-bottom:14px;
+}
+.md-content strong{color:var(--text);font-weight:700;}
+.md-content em{color:var(--text-dim);font-style:italic;}
+
+/* Lists */
+.md-content ul,.md-content ol{
+  margin:8px 0 16px 20px;
+}
+.md-content li{
+  font-size:16px;line-height:1.7;color:var(--text-dim);margin-bottom:5px;
+}
+.md-content li p{margin-bottom:4px;}
+.md-content ul li::marker{color:var(--hope);}
+.md-content ol li::marker{color:var(--gold);}
+
+/* Nested lists */
+.md-content ul ul,.md-content ol ul{margin:4px 0 4px 20px;}
+.md-content li > ul,.md-content li > ol{margin-bottom:4px;}
+
+/* Inline code */
+.md-content code{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  background:var(--surface3);color:var(--hope);
+  padding:2px 6px;border-radius:4px;border:1px solid var(--border);
+}
+
+/* Code blocks */
+.md-content pre{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:16px;margin:16px 0;overflow-x:auto;
+}
+.md-content pre code{
+  background:transparent;border:none;padding:0;
+  color:var(--text-dim);font-size:13px;line-height:1.6;
+}
+
+/* Blockquotes */
+.md-content blockquote{
+  border-left:3px solid var(--hope);
+  margin:16px 0;padding:10px 16px;
+  background:rgba(99,102,241,.06);border-radius:0 6px 6px 0;
+  font-style:italic;color:var(--text-muted);
+}
+
+/* Horizontal rules */
+.md-content hr{
+  border:none;border-top:1px solid var(--border);margin:28px 0;
+}
+
+/* Tables */
+.md-content table{
+  width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;
+}
+.md-content th{
+  background:var(--surface3);color:var(--text);font-weight:700;
+  padding:8px 12px;text-align:left;border:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.05em;
+}
+.md-content td{
+  padding:7px 12px;border:1px solid var(--border);color:var(--text-dim);
+  vertical-align:top;
+}
+.md-content tr:nth-child(even) td{background:rgba(255,255,255,.02);}
+
+/* Wiki links */
+.wiki-link{
+  color:var(--hope);background:rgba(99,102,241,.1);
+  border:1px solid rgba(99,102,241,.25);
+  border-radius:4px;padding:0 5px;font-size:.93em;
+  display:inline-block;cursor:default;
+  transition:background .15s,border-color .15s;
+}
+.wiki-link:hover{background:rgba(99,102,241,.2);border-color:rgba(99,102,241,.5);}
+
+/* Frontmatter stripped indicator */
+.md-meta{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--text-muted);background:var(--surface2);
+  border:1px solid var(--border);border-radius:6px;
+  padding:6px 12px;margin-bottom:28px;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.md-meta::before{content:'📄';}
+
+/* §COMBAT ═══════════════════════════════════════════════
+   COMBAT TRACKER STYLES (inside tab panel)
+═══════════════════════════════════════════════ */
+#combat-tab-panel{flex-direction:row;}
+
+#sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .3s,min-width .3s,opacity .3s;
+  position:relative;
+}
+#sidebar.collapsed{width:0;min-width:0;opacity:0;pointer-events:none;}
+#sidebar-inner{display:flex;flex-direction:column;height:100%;overflow:hidden;width:var(--sidebar-w);}
+
+#sidebar-toggle{
+  position:absolute;top:9px;left:12px;z-index:50;
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  width:30px;height:30px;border-radius:6px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  transition:background .2s,border-color .2s;
+}
+#sidebar-toggle:hover{background:var(--surface3);border-color:var(--hope);}
+
+.sidebar-header{padding:12px 16px 10px 50px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;}
+.sidebar-header h2{font-size:14px;font-weight:800;color:var(--text);letter-spacing:.07em;text-transform:uppercase;font-family:'Cinzel',serif;}
+
+.bp-panel{background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:10px 12px 6px;flex-shrink:0;}
+.bp-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.bp-label{font-size:13px;color:var(--text-muted);white-space:nowrap;}
+.bp-input{width:52px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;padding:3px 6px;}
+.bp-input:focus{outline:none;border-color:var(--hope);}
+.bp-total{font-size:13px;color:var(--text-muted);}
+.bp-total span{color:var(--gold);font-weight:700;font-family:'JetBrains Mono',monospace;}
+.bp-spent{font-size:13px;color:var(--text-muted);}
+.bp-spent span{font-weight:700;font-family:'JetBrains Mono',monospace;}
+.bp-bar-wrap{background:var(--surface);border-radius:4px;height:6px;overflow:hidden;margin-top:6px;}
+.bp-bar{height:100%;border-radius:4px;background:var(--gold);transition:width .3s;}
+.bp-bar.over{background:var(--fear);}
+
+.cost-legend{padding:4px 12px;flex-shrink:0;}
+.cost-legend-title{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:4px;}
+.cost-items{display:flex;flex-wrap:wrap;gap:4px;}
+.cost-pill{font-size:10px;padding:2px 7px;border-radius:99px;background:var(--surface3);border:1px solid var(--border);color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.cost-pill b{color:var(--gold);}
+
+.adv-search{padding:4px 12px 6px;flex-shrink:0;}
+.adv-search-input{
+  width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'Crimson Pro',serif;font-size:13px;
+  padding:5px 10px 5px 30px;transition:border-color .15s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238890b0' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:9px center;
+}
+.adv-search-input:focus{outline:none;border-color:var(--hope);}
+.adv-search-input::placeholder{color:var(--text-muted);}
+
+.filter-row{padding:4px 12px;display:flex;flex-wrap:wrap;gap:4px;flex-shrink:0;}
+.filter-btn{font-size:11px;padding:3px 8px;border-radius:99px;background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;font-family:'Crimson Pro',serif;transition:all .15s;}
+.filter-btn:hover,.filter-btn.active{background:var(--hope);border-color:var(--hope);color:#fff;}
+
+.adv-list{overflow-y:auto;flex:1;padding:4px 8px 16px;}
+.adv-list::-webkit-scrollbar{width:4px;}
+.adv-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.type-group{margin-bottom:8px;}
+.type-header{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);padding:6px 6px 3px;display:flex;align-items:center;gap:6px;}
+.type-header::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.adv-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;transition:border-color .15s;position:relative;overflow:hidden;}
+.adv-card.out-of-budget{opacity:.4;}
+.adv-card:not(.out-of-budget):hover{border-color:var(--border2);}
+.adv-main{display:flex;align-items:stretch;cursor:pointer;}
+.adv-card.out-of-budget .adv-main{cursor:not-allowed;}
+.adv-add-zone{flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:3px;}
+.adv-card:not(.out-of-budget) .adv-add-zone:hover .adv-name{color:var(--hope);}
+.adv-top{display:flex;align-items:center;gap:6px;}
+.adv-name{font-size:14px;font-weight:700;color:var(--text);transition:color .15s;flex:1;}
+.adv-cost-badge{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;padding:1px 6px;border-radius:99px;background:var(--surface3);color:var(--gold);border:1px solid var(--gold-dim);white-space:nowrap;}
+.adv-stats{display:flex;gap:8px;flex-wrap:wrap;}
+.adv-stat{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.adv-stat span{color:var(--text-dim);}
+.adv-atk-line{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.adv-expand-strip{width:30px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:background .15s,color .15s;flex-shrink:0;}
+.adv-expand-strip:hover{background:rgba(212,168,67,.08);color:var(--gold);}
+.adv-expand-strip.open{background:rgba(212,168,67,.1);color:var(--gold);border-left-color:var(--gold-dim);}
+.adv-abilities{display:none;border-top:1px solid var(--border);padding:10px 12px 12px;background:rgba(0,0,0,.25);flex-direction:column;gap:8px;}
+.adv-abilities.open{display:flex;}
+.ability-item{display:flex;flex-direction:column;gap:3px;}
+.ability-header{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.ability-name{font-size:12.5px;font-weight:700;color:var(--text-dim);}
+.ability-tag{font-size:9px;text-transform:uppercase;letter-spacing:.07em;padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-weight:700;flex-shrink:0;}
+.tag-passive{background:rgba(76,175,130,.15);color:#4caf82;border:1px solid rgba(76,175,130,.3);}
+.tag-action{background:rgba(99,102,241,.15);color:#a5a8ff;border:1px solid rgba(99,102,241,.3);}
+.tag-reaction{background:rgba(224,90,106,.15);color:#e05a6a;border:1px solid rgba(224,90,106,.3);}
+.tag-fear{background:rgba(212,168,67,.15);color:var(--gold);border:1px solid rgba(212,168,67,.3);}
+.ability-desc{font-size:11.5px;color:var(--text-muted);line-height:1.6;padding-left:2px;}
+.motives-line{font-size:10.5px;color:var(--text-muted);font-style:italic;border-top:1px solid var(--border);padding-top:6px;margin-top:2px;}
+
+#combat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+#topbar{display:flex;align-items:center;padding:10px 16px 10px 52px;background:var(--surface);border-bottom:1px solid var(--border);gap:12px;flex-shrink:0;}
+#topbar h1{font-size:16px;font-weight:700;letter-spacing:.08em;color:var(--text);flex:1;text-transform:uppercase;font-family:'Cinzel',serif;}
+.topbar-btn{padding:6px 14px;border-radius:8px;border:none;font-family:'Crimson Pro',serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--hope);color:#fff;}
+.btn-primary:hover{background:var(--hope-dim);}
+.btn-danger{background:var(--fear-dim);color:#fff;border:1px solid var(--fear);}
+.btn-danger:hover{background:var(--fear);}
+.btn-add-more{background:transparent;color:var(--gold);border:1px solid var(--gold-dim);}
+.btn-add-more:hover{background:var(--surface3);border-color:var(--gold);}
+.round-badge{font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:4px 12px;color:var(--text-muted);cursor:pointer;transition:border-color .15s;display:flex;align-items:center;gap:6px;}
+.round-badge:hover{border-color:var(--hope);}
+.round-badge span{color:var(--gold);font-weight:700;}
+
+#combat-area{flex:1;overflow-y:auto;padding:16px;}
+#combat-area::-webkit-scrollbar{width:6px;}
+#combat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text-muted);text-align:center;}
+.empty-icon{font-size:48px;opacity:.3;}
+.empty-title{font-size:20px;font-weight:700;color:var(--text-dim);font-family:'Cinzel',serif;}
+.empty-sub{font-size:15px;max-width:340px;line-height:1.5;}
+#encounter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+
+.combat-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;position:relative;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.combat-card{animation:fadeIn .25s ease;}
+.combat-card.defeated{opacity:.4;border-color:var(--border);background:var(--surface);}
+.combat-card.defeated .card-name{text-decoration:line-through;color:var(--text-muted);}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.card-name{font-size:17px;font-weight:800;color:var(--text);line-height:1.2;}
+.card-type-badge{font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:99px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.card-meta{display:flex;gap:10px;flex-wrap:wrap;}
+.card-stat{font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.card-stat span{color:var(--text-dim);}
+.dots-section{display:flex;flex-direction:column;gap:6px;}
+.dots-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:2px;}
+.dots-row{display:flex;flex-wrap:wrap;gap:5px;}
+.dot{width:22px;height:22px;border-radius:50%;border:2px solid;cursor:pointer;transition:background .15s,box-shadow .15s,transform .1s;}
+.dot:hover{transform:scale(1.18);}
+.dot:active{transform:scale(.95);}
+.dot-hp{border-color:var(--hp-color);background:transparent;}
+.dot-hp.marked{background:var(--hp-color);box-shadow:0 0 6px var(--fear-glow);}
+.dot-stress{border-color:var(--stress-color);background:transparent;}
+.dot-stress.marked{background:var(--stress-color);box-shadow:0 0 6px var(--hope-glow);}
+.card-dismiss{position:absolute;top:8px;right:10px;width:22px;height:22px;border-radius:50%;background:transparent;border:1px solid var(--border);color:var(--text-muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;}
+.card-dismiss:hover{background:var(--fear-dim);border-color:var(--fear);color:#fff;}
+.defeated-banner{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:700;color:var(--fear);text-transform:uppercase;letter-spacing:.1em;padding:4px;background:rgba(224,90,106,.08);border-radius:6px;}
+#status-bar{display:flex;align-items:center;padding:8px 16px;background:var(--surface);border-top:1px solid var(--border);gap:16px;font-size:13px;color:var(--text-muted);flex-shrink:0;}
+.status-item{display:flex;align-items:center;gap:5px;}
+.status-item span{color:var(--text);font-weight:700;font-family:'JetBrains Mono',monospace;}
+@keyframes hopePulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}50%{box-shadow:0 0 10px 4px rgba(99,102,241,.45)}}
+.btn-begin{animation:hopePulse 2s ease-in-out infinite;}
+
+/* §TYPE_COLORS */
+.tc-solo    {background:rgba(224,90,106,.15);color:#e05a6a;border-color:rgba(224,90,106,.4);}
+.tc-bruiser {background:rgba(212,168,67,.15);color:#d4a843;border-color:rgba(212,168,67,.4);}
+.tc-leader  {background:rgba(99,102,241,.18);color:#a5a8ff;border-color:rgba(99,102,241,.4);}
+.tc-ranged  {background:rgba(76,175,130,.15);color:#4caf82;border-color:rgba(76,175,130,.4);}
+.tc-skulk   {background:rgba(120,80,180,.18);color:#c090ff;border-color:rgba(120,80,180,.4);}
+.tc-horde   {background:rgba(200,140,60,.15);color:#e8a450;border-color:rgba(200,140,60,.4);}
+.tc-standard{background:rgba(140,150,180,.15);color:#aab0cc;border-color:rgba(140,150,180,.4);}
+.tc-minion  {background:rgba(100,120,100,.15);color:#88aa88;border-color:rgba(100,120,100,.4);}
+.tc-support {background:rgba(60,160,200,.15);color:#60b8e0;border-color:rgba(60,160,200,.4);}
+.tc-social  {background:rgba(200,100,160,.15);color:#e080b8;border-color:rgba(200,100,160,.4);}
+
+/* §MODAL ═══════════════════════════════════════════════
+   CUSTOM ADVERSARY MODAL
+═══════════════════════════════════════════════ */
+#custom-modal-bg{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(5,6,10,.88);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;
+}
+#custom-modal-bg.open{display:flex;}
+
+#custom-modal{
+  background:var(--surface);border:1px solid var(--border2);border-radius:14px;
+  width:min(680px,96vw);max-height:90vh;display:flex;flex-direction:column;
+  overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.7);
+}
+.cm-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  background:var(--surface2);flex-shrink:0;
+}
+.cm-title{font-family:'Cinzel',serif;font-size:16px;font-weight:700;letter-spacing:.08em;color:var(--text);}
+.cm-close{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.cm-close:hover{background:var(--fear-dim);border-color:var(--fear);color:#fff;}
+
+.cm-body{overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;flex:1;}
+.cm-body::-webkit-scrollbar{width:4px;}
+.cm-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+.cm-section-title{
+  font-size:10px;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--text-muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace;
+}
+.cm-row{display:flex;gap:10px;flex-wrap:wrap;}
+.cm-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:80px;}
+.cm-field.wide{flex:2;min-width:160px;}
+.cm-field.full{flex:1 1 100%;}
+.cm-label{font-size:11px;color:var(--text-muted);letter-spacing:.05em;}
+.cm-input,.cm-select,.cm-textarea{
+  background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'Crimson Pro',serif;font-size:14px;
+  padding:7px 10px;transition:border-color .15s;width:100%;
+}
+.cm-input:focus,.cm-select:focus,.cm-textarea:focus{outline:none;border-color:var(--hope);}
+.cm-input[type=number]{-moz-appearance:textfield;}
+.cm-input[type=number]::-webkit-inner-spin-button{display:none;}
+.cm-textarea{resize:vertical;min-height:60px;line-height:1.5;}
+.cm-select option{background:var(--surface3);}
+
+/* ability rows */
+.feat-list{display:flex;flex-direction:column;gap:8px;}
+.feat-row{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;display:flex;flex-direction:column;gap:8px;
+  position:relative;
+}
+.feat-row-top{display:flex;gap:8px;align-items:flex-start;}
+.feat-select{width:110px;flex-shrink:0;}
+.feat-name-input{flex:1;}
+.feat-remove{
+  width:26px;height:26px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--text-muted);font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .15s;margin-top:1px;
+}
+.feat-remove:hover{background:var(--fear-dim);border-color:var(--fear);color:#fff;}
+.feat-desc-input{width:100%;}
+
+.cm-add-feat{
+  width:100%;padding:8px;border-radius:6px;border:1px dashed var(--border2);
+  background:transparent;color:var(--text-muted);font-family:'Crimson Pro',serif;
+  font-size:13px;cursor:pointer;transition:all .15s;margin-top:2px;
+}
+.cm-add-feat:hover{border-color:var(--hope);color:var(--hope);background:rgba(99,102,241,.06);}
+
+.cm-footer{
+  padding:14px 20px;border-top:1px solid var(--border);
+  background:var(--surface2);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;
+}
+.cm-btn{padding:8px 20px;border-radius:8px;border:none;font-family:'Crimson Pro',serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;}
+.cm-btn-save{background:var(--hope);color:#fff;}
+.cm-btn-save:hover{background:var(--hope-dim);}
+.cm-btn-cancel{background:var(--surface3);color:var(--text-muted);border:1px solid var(--border);}
+.cm-btn-cancel:hover{color:var(--text);border-color:var(--border2);}
+
+/* custom badge on arsenal cards */
+.custom-pill{
+  font-size:9px;padding:1px 5px;border-radius:4px;
+  background:rgba(76,175,130,.15);color:#4caf82;
+  border:1px solid rgba(76,175,130,.3);
+  font-family:'JetBrains Mono',monospace;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;flex-shrink:0;
+}
+.adv-delete-btn{
+  width:22px;height:100%;border:none;border-left:1px solid var(--border);
+  background:transparent;color:var(--text-muted);font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;flex-shrink:0;
+}
+.adv-delete-btn:hover{background:rgba(224,90,106,.15);color:var(--fear);}
+
+/* create custom button in sidebar */
+.create-custom-btn{
+  margin:0 12px 8px;padding:8px 12px;border-radius:8px;
+  border:1px dashed var(--border2);background:transparent;
+  color:var(--text-muted);font-family:'Crimson Pro',serif;font-size:13px;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;
+  font-weight:600;
+}
+.create-custom-btn:hover{border-color:var(--green);color:var(--green);background:rgba(76,175,130,.06);}
+
+/* edit modal mode */
+#cm-edit-id{display:none;}
+
+/* §HINT ═══════════════════════════════════════════════
+   WELCOME / DROP HINT ON NOTES TAB
+═══════════════════════════════════════════════ */
+.md-welcome{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;text-align:center;padding:40px;
+}
+.mw-icon{font-size:52px;opacity:.25;}
+.mw-title{font-family:'Cinzel',serif;font-size:24px;font-weight:600;color:var(--text-dim);letter-spacing:.06em;}
+.mw-sub{font-size:15px;color:var(--text-muted);max-width:400px;line-height:1.6;}
+.mw-btn{
+  margin-top:8px;padding:10px 24px;border-radius:8px;border:1px solid var(--gold-dim);
+  background:transparent;color:var(--gold);font-family:'Crimson Pro',serif;
+  font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;
+}
+.mw-btn:hover{background:rgba(212,168,67,.12);border-color:var(--gold);}
+.hint-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:560px;}
+.hint-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:left;}
+.hint-card .hc-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+.hint-card .hc-val{font-size:13px;color:var(--text-dim);}
+
+/* §MOBILE_768 ═══════════════════════════════════════════════
+   RESPONSIVE — MOBILE (≤768px)
+═══════════════════════════════════════════════ */
+@media(max-width:768px){
+  body{overscroll-behavior:none;} /* prevent iOS bounce scroll */
+  #gm-badge{display:none;}
+  .tab-title{max-width:90px;}
+  #tab-upload span:last-of-type{display:none;}
+
+  /* Sidebar becomes a slide-in overlay drawer */
+  #combat-tab-panel{position:relative;}
+  #sidebar{
+    position:absolute;top:0;left:0;bottom:0;z-index:100;
+    width:min(340px,100vw);min-width:0;
+    box-shadow:4px 0 24px rgba(0,0,0,.6);
+    transform:translateX(0);
+    transition:transform .3s,box-shadow .3s;
+  }
+  #sidebar.collapsed{
+    width:min(340px,100vw);min-width:0;opacity:1;pointer-events:none;
+    transform:translateX(-100%);box-shadow:none;
+  }
+  #sidebar-inner{width:min(340px,100vw);}
+
+  /* Tap-outside overlay to dismiss sidebar */
+  #sidebar-overlay{
+    display:none;position:fixed;inset:0;z-index:99;
+    background:rgba(0,0,0,.45);
+  }
+  #sidebar-overlay.active{display:block;}
+
+  /* Larger tap targets for dots */
+  .dot{width:32px;height:32px;}
+  .dot,.tab-close,.card-dismiss,.filter-btn,.topbar-btn{touch-action:manipulation;}
+
+  #topbar{flex-wrap:wrap;padding:8px 12px 8px 50px;}
+  .md-panel{padding:20px 16px;}
+  .hint-grid{grid-template-columns:1fr 1fr;}
+  #status-bar{flex-wrap:wrap;gap:6px;padding:6px 12px;}
+}
+
+/* §MOBILE_480 ═══════════════════════════════════════════════
+   RESPONSIVE — SMALL MOBILE (≤480px)
+═══════════════════════════════════════════════ */
+@media(max-width:480px){
+  .hint-grid{grid-template-columns:1fr;}
+  .dot{width:36px;height:36px;}
+  #topbar h1{font-size:14px;}
+  .topbar-btn{font-size:12px;padding:5px 10px;}
+}
+
+</style>
+</head>
+<body>
+
+<!-- DROP OVERLAY -->
+<div id="drop-overlay">
+  <div class="drop-icon">📜</div>
+  <div class="drop-label">Drop .MD Files Here</div>
+  <div class="drop-sub">Each file will open as a new lore tab</div>
+</div>
+
+<!-- TAB BAR -->
+<div id="tabbar">
+  <div class="tab active" data-tab="combat" onclick="switchTab('combat')">
+    <span class="tab-icon">⚔</span>
+    <span class="tab-title">Combat Tracker</span>
+  </div>
+  <!-- Dynamic tabs inserted here -->
+  <div id="dynamic-tabs"></div>
+
+  <label id="tab-upload" title="Upload .md files to open as lore tabs">
+    <span>＋</span><span>Add Lore Tab</span>
+    <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple onchange="handleFileUpload(this.files)">
+  </label>
+
+  <div id="gm-badge">
+    <span>THE MOTHER TREE</span>
+    <strong>GM INTERFACE</strong>
+  </div>
+</div>
+
+<!-- COMBAT TAB PANEL -->
+<div class="tab-panel active" id="panel-combat">
+  <div id="combat-tab-panel" style="display:flex;flex:1;overflow:hidden;">
+
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div id="sidebar">
+      <div id="sidebar-inner">
+        <div class="sidebar-header">
+          <button id="sidebar-toggle" title="Toggle Arsenal" onclick="toggleSidebar()">☰</button>
+          <h2>⚔ Adversary Arsenal</h2>
+        </div>
+        <div class="bp-panel">
+          <div class="bp-row">
+            <span class="bp-label">Players:</span>
+            <input type="number" class="bp-input" id="player-count" value="4" min="1" max="10" onchange="updateBP()">
+            <span class="bp-total">Total: <span id="bp-total">14</span> pts</span>
+          </div>
+          <div class="bp-spent">Used: <span id="bp-spent" style="color:var(--fear)">0</span> · Remaining: <span id="bp-rem" style="color:var(--green)">14</span></div>
+          <div class="bp-bar-wrap"><div class="bp-bar" id="bp-bar" style="width:0%"></div></div>
+        </div>
+        <div class="cost-legend">
+          <div class="cost-legend-title">Battle Point Costs</div>
+          <div class="cost-items">
+            <div class="cost-pill">Minion/Social/Support <b>1pt</b></div>
+            <div class="cost-pill">Horde/Ranged/Skulk/Standard <b>2pt</b></div>
+            <div class="cost-pill">Leader <b>3pt</b></div>
+            <div class="cost-pill">Bruiser <b>4pt</b></div>
+            <div class="cost-pill">Solo <b>5pt</b></div>
+          </div>
+        </div>
+        <div class="adv-search">
+          <input type="search" class="adv-search-input" id="adv-search" placeholder="Search adversaries…" oninput="setSearch(this.value)" autocomplete="off">
+        </div>
+        <div class="filter-row" id="filter-row"></div>
+        <button class="create-custom-btn" onclick="openCustomModal()">
+          <span>✦</span><span>Create Custom Adversary</span>
+        </button>
+        <div class="adv-list" id="adv-list"></div>
+      </div>
+    </div>
+
+    <div id="combat-main">
+      <div id="topbar">
+        <h1>Combat Tracker</h1>
+        <div class="round-badge" id="round-badge" onclick="advanceRound()" title="Click to advance round" style="display:none">Round <span id="round-num">1</span></div>
+        <button class="topbar-btn btn-add-more" id="btn-add-more" onclick="openSidebar()" style="display:none">+ Adversaries</button>
+        <button class="topbar-btn btn-primary btn-begin" id="btn-begin" onclick="beginBattle()">▶ Begin Battle</button>
+        <button class="topbar-btn btn-danger" id="btn-reset" onclick="resetBattle()" style="display:none">↺ Reset</button>
+      </div>
+      <div id="combat-area">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">🗡</div>
+          <div class="empty-title">No Encounter Built</div>
+          <div class="empty-sub">Open the sidebar, browse adversaries, spend your Battle Points, then hit <strong>▶ Begin Battle</strong>.</div>
+        </div>
+        <div id="encounter-grid" style="display:none"></div>
+      </div>
+      <div id="status-bar">
+        <div class="status-item">Active: <span id="status-active">0</span></div>
+        <div class="status-item">Defeated: <span id="status-defeated">0</span></div>
+        <div class="status-item">Budget remaining: <span id="status-bp">14</span> pts</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Dynamic tab panels injected here -->
+<div id="dynamic-panels"></div>
+
+<!-- ═══════════════════════════════════════════════
+     CUSTOM ADVERSARY MODAL
+═══════════════════════════════════════════════ -->
+<div id="custom-modal-bg">
+  <div id="custom-modal">
+    <div class="cm-header">
+      <span class="cm-title" id="cm-modal-title">✦ Create Custom Adversary</span>
+      <button type="button" class="cm-close" id="cm-close-btn">✕</button>
+    </div>
+    <div class="cm-body">
+
+      <!-- identity -->
+      <div>
+        <div class="cm-section-title">Identity</div>
+        <div class="cm-row">
+          <div class="cm-field wide">
+            <label class="cm-label">Name *</label>
+            <input class="cm-input" id="cm-name" placeholder="e.g. Rust Crawler" maxlength="60">
+          </div>
+          <div class="cm-field">
+            <label class="cm-label">Type *</label>
+            <select class="cm-select" id="cm-type">
+              <option value="solo">Solo (5pt)</option>
+              <option value="bruiser">Bruiser (4pt)</option>
+              <option value="leader">Leader (3pt)</option>
+              <option value="horde">Horde (2pt)</option>
+              <option value="ranged">Ranged (2pt)</option>
+              <option value="skulk">Skulk (2pt)</option>
+              <option value="standard" selected>Standard (2pt)</option>
+              <option value="minion">Minion (1pt)</option>
+              <option value="support">Support (1pt)</option>
+              <option value="social">Social (1pt)</option>
+            </select>
+          </div>
+        </div>
+        <div class="cm-row" style="margin-top:8px">
+          <div class="cm-field full">
+            <label class="cm-label">Description / Motives</label>
+            <input class="cm-input" id="cm-motives" placeholder="e.g. Scavenge, ambush, drag into dark">
+          </div>
+        </div>
+      </div>
+
+      <!-- stats -->
+      <div>
+        <div class="cm-section-title">Stats</div>
+        <div class="cm-row">
+          <div class="cm-field"><label class="cm-label">Difficulty</label><input class="cm-input" id="cm-dc" type="number" placeholder="12" min="1" max="30"></div>
+          <div class="cm-field"><label class="cm-label">HP</label><input class="cm-input" id="cm-hp" type="number" placeholder="4" min="1" max="20"></div>
+          <div class="cm-field"><label class="cm-label">Stress</label><input class="cm-input" id="cm-st" type="number" placeholder="3" min="1" max="10"></div>
+          <div class="cm-field"><label class="cm-label">Major THR</label><input class="cm-input" id="cm-maj" type="number" placeholder="6" min="1"></div>
+          <div class="cm-field"><label class="cm-label">Severe THR</label><input class="cm-input" id="cm-sev" type="number" placeholder="12" min="1"></div>
+        </div>
+      </div>
+
+      <!-- attack -->
+      <div>
+        <div class="cm-section-title">Attack</div>
+        <div class="cm-row">
+          <div class="cm-field"><label class="cm-label">ATK Bonus</label><input class="cm-input" id="cm-atk" placeholder="+2" maxlength="6"></div>
+          <div class="cm-field wide"><label class="cm-label">Weapon · Range</label><input class="cm-input" id="cm-wpn" placeholder="e.g. Rusted Claws · Melee"></div>
+          <div class="cm-field"><label class="cm-label">Damage</label><input class="cm-input" id="cm-dmg" placeholder="e.g. 1d8+3 phy"></div>
+        </div>
+      </div>
+
+      <!-- abilities -->
+      <div>
+        <div class="cm-section-title">Abilities</div>
+        <div class="feat-list" id="cm-feat-list"></div>
+        <button type="button" class="cm-add-feat" id="cm-add-feat-btn">＋ Add Ability</button>
+      </div>
+
+    </div>
+    <div class="cm-footer">
+      <input type="hidden" id="cm-edit-id">
+      <button type="button" class="cm-btn cm-btn-cancel" id="cm-cancel-btn">Cancel</button>
+      <button type="button" class="cm-btn cm-btn-save" id="cm-save-btn">Save Adversary</button>
+    </div>
+  </div>
+</div>
+
+<script>/* §APP_JS */
 // §TAB_SYSTEM ═══════════════════════════════════════════════════════════
 // TAB SYSTEM
 // ═══════════════════════════════════════════════════════════
@@ -577,3 +1588,7 @@ loadCustomAdv();
   statusBar();
   if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}
 })();
+
+</script>
+</body>
+</html>
