@@ -163,7 +163,7 @@ const ADV=[
 // ═══════════════════════════════════════════════════════════
 let sidebarOpen=true,battleStarted=false,round=1;
 let playerCount=4,bpTotal=14,bpSpent=0;
-let cart=[],combatants=[],filterType='all',iid=0;
+let cart=[],combatants=[],filterType='all',filterSearch='',iid=0;
 let expanded=new Set();
 var tabRawMd={};
 var _restoring=false;
@@ -198,6 +198,7 @@ function buildFilters(){
     ['all',...TYPE_ORDER].map(t=>`<button class="filter-btn${t===filterType?' active':''}" onclick="setFilter('${t}')">${t==='all'?'All':ICONS[t]+' '+cap(t)}</button>`).join('');
 }
 function setFilter(t){filterType=t;buildFilters();renderList();}
+function setSearch(v){filterSearch=v.trim().toLowerCase();renderList();}
 function cap(s){return s[0].toUpperCase()+s.slice(1);}
 
 const TAG_LABEL={passive:'Passive',action:'Action',reaction:'Reaction',fear:'Fear'};
@@ -210,6 +211,7 @@ function addToQueue(id){
   if(battleStarted){addCombatant(a);return;}
   cart.push({...a,_iid:++iid});
   syncBP();renderList();renderStage();statusBar();saveSession();
+  if(window.innerWidth<=768&&sidebarOpen)toggleSidebar();
 }
 function removeFromCart(_iid){
   const idx=cart.findIndex(c=>c._iid===_iid);if(idx<0)return;
@@ -486,6 +488,7 @@ function loadSession(){
 function renderList(){
   var rem=bpTotal-bpSpent;
   var filtered=filterType==='all'?ADV:ADV.filter(function(a){return a.type===filterType;});
+  if(filterSearch)filtered=filtered.filter(function(a){return a.name.toLowerCase().includes(filterSearch);});
   var groups={};TYPE_ORDER.forEach(function(t){groups[t]=[];});
   filtered.forEach(function(a){groups[a.type].push(a);});
   var html='';
@@ -563,4 +566,5 @@ loadCustomAdv();
   updateBP();buildFilters();renderList();
   if(battleStarted){renderCombat();}else{renderStage();}
   statusBar();
+  if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}
 })();
