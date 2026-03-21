@@ -244,7 +244,10 @@ function openMdFile(filename,raw){
 function renderMd(raw,title){
   // Strip YAML frontmatter
   let content=raw.replace(/^---[\s\S]*?---\n?/,'').trim();
-  // Convert wiki links [[X]] to styled spans
+  // Encounter links first, then general wiki links
+  content=content.replace(/\[\[encounter:([^\]]+)\]\]/g,function(_,name){
+    return '<a class="encounter-link" data-encounter-name="'+name.replace(/"/g,'&quot;')+'" href="#">⚔ '+name+'</a>';
+  });
   content=content.replace(/\[\[([^\]]+)\]\]/g,'<span class="wiki-link">$1</span>');
   // Parse markdown
   marked.setOptions({breaks:true,gfm:true});
@@ -873,6 +876,18 @@ document.addEventListener('click',function(e){
   if(loadBtn){loadSavedEncounter(loadBtn.dataset.loadenc);return;}
   var delBtn=e.target.closest('[data-delenc]');
   if(delBtn){deleteSavedEncounter(delBtn.dataset.delenc);return;}
+  // encounter links in lore tabs
+  var encLink=e.target.closest('.encounter-link');
+  if(encLink){
+    e.preventDefault();
+    var encName=encLink.dataset.encounterName;
+    db_getAll('saved_encounters').then(function(encs){
+      var enc=(encs||[]).find(function(x){return x.name===encName;});
+      if(!enc){showToast('No saved encounter named "'+encName+'" found.');return;}
+      _doLoadEncounter(enc);
+    });
+    return;
+  }
 });
 
 // §CUSTOM_ADV ═══════════════════════════════════════════════════════════
