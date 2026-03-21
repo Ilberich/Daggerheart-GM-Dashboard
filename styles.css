@@ -569,6 +569,16 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .hint-card .hc-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
 .hint-card .hc-val{font-size:13px;color:var(--text-dim);}
 
+/* §TOAST */
+#toast-msg{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--surface2);border:1px solid var(--border2);color:var(--text);
+  font-family:'Crimson Pro',serif;font-size:15px;padding:10px 20px;border-radius:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .25s;z-index:2000;white-space:nowrap;
+}
+#toast-msg.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
 /* §MOBILE_768 ═══════════════════════════════════════════════
    RESPONSIVE — MOBILE (≤768px)
 ═══════════════════════════════════════════════ */
