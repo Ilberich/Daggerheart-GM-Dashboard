@@ -26,6 +26,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
   scrollbar-width:none;padding-top:5px;
 }
 #tabbar::-webkit-scrollbar{display:none;}
+#battle-tabs{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;}
 
 .tab{
   display:flex;align-items:center;gap:7px;

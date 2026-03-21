@@ -79,22 +79,18 @@ function applyBattleToDOM(){
 }
 
 function renderBattleTabs(){
-  // Remove existing battle tab elements (direct children of #tabbar)
-  document.querySelectorAll('#tabbar [data-battletab]').forEach(el=>el.remove());
-  const anchor=document.getElementById('new-battle-btn');
-  const tabbar=document.getElementById('tabbar');
+  const container=document.getElementById('battle-tabs');
+  container.innerHTML='';
   battles.forEach(function(b){
     const tab=document.createElement('div');
     tab.className='tab'+(b.id===activeBattleId?' active':'');
     tab.dataset.battletab=b.id;
-    tab.style.display='inline-flex';  // Explicitly set inline-flex to ensure horizontal layout
     tab.onclick=function(){switchBattle(b.id);};
     tab.innerHTML='<span class="tab-icon">⚔</span>'
       +'<span class="tab-title" ondblclick="renameBattle(\''+escH(b.id)+'\');event.stopPropagation()" title="Double-click to rename">'+escH(b.name)+'</span>'
       +(battles.length>1?'<button class="tab-close" onclick="closeBattle(\''+b.id+'\',event)">×</button>':'');
-    tabbar.insertBefore(tab,anchor);
+    container.appendChild(tab);
   });
-  console.log('renderBattleTabs: inserted',battles.length,'tabs');
 }
 
 function newBattle(){
