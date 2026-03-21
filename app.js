@@ -1509,6 +1509,10 @@ function toggleGenSection(id){
   if(chev)chev.textContent=body.classList.contains('open')?'▲':'▼';
 }
 
+// Stub — replaced by full implementation in Task 5
+function _rollDice(expr){return 1;}
+function rollLoot(){showToast('Loot roller coming soon.');}
+
 // §INIT
 // ── Init ──────────────────────────────────────────────────
 loadCustomAdv();
