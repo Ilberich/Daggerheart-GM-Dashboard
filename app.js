@@ -2382,7 +2382,7 @@ function setEnvSeed(seed){
   });
 }
 
-function _pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function _pick(arr){return (arr&&arr.length)?arr[Math.floor(Math.random()*arr.length)]:undefined;}
 function _pickN(arr,n){
   var s=arr.slice().sort(function(){return Math.random()-.5;});
   return s.slice(0,n);
@@ -2421,7 +2421,8 @@ function generateEnv(){
     for(var j=0;j<weights.length;j++){cumul+=weights[j].w;if(roll<cumul){ftype=weights[j].type;break;}}
     var fname=_pick(data.feat_names[ftype]);
     var fpool=ftype==='fear'?data.fears:data[ftype+'s'];
-    var ftext=_pick(fpool).replace(/\{dmg\}/g,dmg);
+    if(!fpool||!fpool.length||!fname){continue;}
+    var ftext=(_pick(fpool)||'').replace(/\{dmg\}/g,dmg);
     features.push({type:ftype,name:fname,text:ftext});
   }
   _currentEnvBlock={name:name,tier:tier,type:_envType,desc:desc,impulses:impulses,dc:dc,adversaries:adversaries,features:features,seed:_envSeed};
@@ -2468,7 +2469,7 @@ function saveEnvToLibrary(asNew){
   var rec=Object.assign({},_currentEnvBlock,{id:id,savedAt:new Date().toISOString()});
   db_put('generator_library',rec).then(function(){
     showToast((!asNew&&_editingEnvId)?'Environment updated.':'"'+rec.name+'" saved to library.');
-    if(!asNew)_editingEnvId=null;
+    _editingEnvId=null;
     renderEnvLibrary();
   });
 }
