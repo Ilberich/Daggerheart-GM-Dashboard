@@ -827,6 +827,8 @@ function renderList(){
 
 // ── Single event-delegated click handler for adv-list ────
 document.addEventListener('click',function(e){
+  var setCatBtn=e.target.closest('[data-setcat]');
+  if(setCatBtn){setRulesCat(setCatBtn.dataset.setcat);return;}
   // add to queue
   var addZone=e.target.closest('[data-addid]');
   if(addZone){addToQueue(addZone.dataset.addid);return;}
@@ -842,6 +844,24 @@ document.addEventListener('click',function(e){
   // remove feat row
   var removeBtn=e.target.closest('[data-rowid]');
   if(removeBtn){document.getElementById(removeBtn.dataset.rowid)?.remove();return;}
+  var editRuleBtn=e.target.closest('[data-ruleedit]');
+  if(editRuleBtn){
+    db_get('toolkit_notes',editRuleBtn.dataset.ruleedit).then(function(rec){
+      if(!rec)return;
+      _ruleEditId=rec.id;
+      var form=document.getElementById('rules-add-form');
+      if(!form)return;
+      document.getElementById('rif-name').value=rec.name||'';
+      document.getElementById('rif-cat').value=rec.cat||'';
+      document.getElementById('rif-summary').value=rec.summary||'';
+      document.getElementById('rif-body').value=rec.body||'';
+      form.classList.add('open');
+      form.scrollIntoView({behavior:'smooth'});
+    });
+    return;
+  }
+  var delRuleBtn=e.target.closest('[data-ruledel]');
+  if(delRuleBtn){deleteCustomRule(delRuleBtn.dataset.ruledel);return;}
 });
 
 function toggleAbilitiesById(id,btn){
@@ -1142,7 +1162,7 @@ function renderRulesCats(){
          .filter(function(c,i,a){return a.indexOf(c)===i;})
   );
   el.innerHTML=cats.map(function(c){
-    return '<button class="rules-cat-pill'+(c===_rulesFilter.cat?' active':'')+'" onclick="setRulesCat(\''+escH(c)+'\')">'+escH(c)+'</button>';
+    return '<button class="rules-cat-pill'+(c===_rulesFilter.cat?' active':'')+'" data-setcat="'+escH(c)+'">'+escH(c)+'</button>';
   }).join('');
 }
 
@@ -1158,7 +1178,7 @@ function renderRulesList(){
     var filtered=all.filter(function(r){
       var catMatch=_rulesFilter.cat==='All'||r.cat===_rulesFilter.cat;
       var q=_rulesFilter.search;
-      var textMatch=!q||(r.name.toLowerCase().includes(q)||r.body.toLowerCase().includes(q)||r.summary.toLowerCase().includes(q));
+      var textMatch=!q||(r.name.toLowerCase().indexOf(q)!==-1||r.body.toLowerCase().indexOf(q)!==-1||r.summary.toLowerCase().indexOf(q)!==-1);
       return catMatch&&textMatch;
     });
     if(!filtered.length){el.innerHTML='<div style="padding:12px;font-size:13px;color:var(--text-muted)">No rules match.</div>';_appendRulesForm(el);return;}
@@ -1209,8 +1229,9 @@ function saveCustomRule(){
   var rec={
     id:_ruleEditId||('rule_'+Date.now()),
     _rule:true,
-    cat:cat,name:name,summary:summary,body:body,createdAt:new Date().toISOString()
+    cat:cat,name:name,summary:summary,body:body
   };
+  if(!_ruleEditId){rec.createdAt=new Date().toISOString();}
   db_put('toolkit_notes',rec).then(function(){
     showToast(_ruleEditId?'Rule updated.':'Rule saved.');
     _ruleEditId=null;
@@ -1225,27 +1246,6 @@ function deleteCustomRule(id){
   db_delete('toolkit_notes',id).then(function(){showToast('Rule deleted.');renderRulesList();});
 }
 
-// Event delegation for rule edit/delete
-document.addEventListener('click',function(e){
-  var editBtn=e.target.closest('[data-ruleedit]');
-  if(editBtn){
-    db_get('toolkit_notes',editBtn.dataset.ruleedit).then(function(rec){
-      if(!rec)return;
-      _ruleEditId=rec.id;
-      var form=document.getElementById('rules-add-form');
-      if(!form)return;
-      document.getElementById('rif-name').value=rec.name||'';
-      document.getElementById('rif-cat').value=rec.cat||'';
-      document.getElementById('rif-summary').value=rec.summary||'';
-      document.getElementById('rif-body').value=rec.body||'';
-      form.classList.add('open');
-      form.scrollIntoView({behavior:'smooth'});
-    });
-    return;
-  }
-  var delBtn=e.target.closest('[data-ruledel]');
-  if(delBtn){deleteCustomRule(delBtn.dataset.ruledel);return;}
-});
 
 // §INIT
 // ── Init ──────────────────────────────────────────────────
