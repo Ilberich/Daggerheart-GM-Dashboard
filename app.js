@@ -244,10 +244,7 @@ function openMdFile(filename,raw){
 function renderMd(raw,title){
   // Strip YAML frontmatter
   let content=raw.replace(/^---[\s\S]*?---\n?/,'').trim();
-  // Encounter links first, then general wiki links
-  content=content.replace(/\[\[encounter:([^\]]+)\]\]/g,function(_,name){
-    return '<a class="encounter-link" data-encounter-name="'+name.replace(/"/g,'&quot;')+'" href="#">⚔ '+name+'</a>';
-  });
+  // Convert wiki links [[X]] to styled spans
   content=content.replace(/\[\[([^\]]+)\]\]/g,'<span class="wiki-link">$1</span>');
   // Parse markdown
   marked.setOptions({breaks:true,gfm:true});
@@ -436,7 +433,6 @@ function renderStage(){
   if(!battleStarted&&cart.length===0){grid.style.display='none';empty.style.display='flex';return;}
   empty.style.display='none';grid.style.display='grid';
   grid.innerHTML=cart.map(c=>`<div class="combat-card" style="border-style:dashed;opacity:.75"><button class="card-dismiss" onclick="removeFromCart(${c._iid})">✕</button><div class="card-header"><div class="card-name">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">HP <span>${c.hp}</span></span><span class="card-stat">ST <span>${c.st}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span></div><div style="font-size:12px;color:var(--text-muted);font-style:italic;text-align:center">Queued — hit ▶ Begin Battle</div></div>`).join('');
-  updateSaveEncBtn();
 }
 // §COMBAT_RENDER
 function renderCombat(){
@@ -523,373 +519,6 @@ function statusBar(){
   syncBP();
 }
 
-// §DB ═══════════════════════════════════════════════════════════════
-// INDEXEDDB WRAPPER
-// ═══════════════════════════════════════════════════════════════════
-var DB_NAME='MotherTreeDB',DB_VERSION=1,_db=null,_dbFailed=false;
-
-function db_open(){
-  return new Promise(function(res,rej){
-    if(_db){res(_db);return;}
-    if(typeof indexedDB==='undefined'){_dbFailed=true;rej(new Error('no idb'));return;}
-    var req=indexedDB.open(DB_NAME,DB_VERSION);
-    req.onupgradeneeded=function(e){
-      var db=e.target.result;
-      ['combat_session','custom_adversaries','toolkit_notes',
-       'generator_library','saved_encounters'].forEach(function(s){
-        if(!db.objectStoreNames.contains(s))
-          db.createObjectStore(s,s==='combat_session'?{keyPath:'key'}:{keyPath:'id'});
-      });
-      if(!db.objectStoreNames.contains('settings'))
-        db.createObjectStore('settings',{keyPath:'k'});
-    };
-    req.onsuccess=function(e){
-      _db=e.target.result;
-      _db.onclose=function(){_db=null;};
-      res(_db);
-    };
-    req.onerror=function(e){_dbFailed=true;rej(e.target.error);};
-    req.onblocked=function(){
-      showToast('Please close other tabs to allow database upgrade.',5000);
-      rej(new Error('idb blocked'));
-    };
-  });
-}
-function db_put(store,val){
-  return db_open().then(function(db){
-    return new Promise(function(res,rej){
-      var req=db.transaction(store,'readwrite').objectStore(store).put(val);
-      req.onsuccess=function(){res(req.result);};
-      req.onerror=function(){rej(req.error);};
-    });
-  });
-}
-function db_get(store,key){
-  return db_open().then(function(db){
-    return new Promise(function(res,rej){
-      var req=db.transaction(store,'readonly').objectStore(store).get(key);
-      req.onsuccess=function(){res(req.result);};
-      req.onerror=function(){rej(req.error);};
-    });
-  });
-}
-function db_getAll(store){
-  return db_open().then(function(db){
-    return new Promise(function(res,rej){
-      var req=db.transaction(store,'readonly').objectStore(store).getAll();
-      req.onsuccess=function(){res(req.result);};
-      req.onerror=function(){rej(req.error);};
-    });
-  });
-}
-function db_delete(store,key){
-  return db_open().then(function(db){
-    return new Promise(function(res,rej){
-      var req=db.transaction(store,'readwrite').objectStore(store).delete(key);
-      req.onsuccess=function(){res();};
-      req.onerror=function(){rej(req.error);};
-    });
-  });
-}
-function db_clear(store){
-  return db_open().then(function(db){
-    return new Promise(function(res,rej){
-      var req=db.transaction(store,'readwrite').objectStore(store).clear();
-      req.onsuccess=function(){res();};
-      req.onerror=function(){rej(req.error);};
-    });
-  });
-}
-function db_setting(key,value){
-  if(value===undefined)
-    return db_get('settings',key).then(function(r){return r?r.v:undefined;});
-  return db_put('settings',{k:key,v:value});
-}
-
-function showToast(msg,duration){
-  duration=duration||3000;
-  var el=document.getElementById('toast-msg');
-  if(!el){el=document.createElement('div');el.id='toast-msg';document.body.appendChild(el);}
-  el.textContent=msg;el.classList.add('show');
-  clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('show');},duration);
-}
-
-// §DB_MIGRATE ═══════════════════════════════════════════════════════════
-// ONE-TIME MIGRATION: localStorage → IndexedDB
-// ═══════════════════════════════════════════════════════════════════════
-function db_migrate(){
-  return db_setting('data_migrated').then(function(done){
-    if(done)return;
-    var promises=[];
-    var sessRaw=localStorage.getItem('motherTree_session');
-    if(sessRaw){
-      try{
-        var sess=JSON.parse(sessRaw);
-        promises.push(db_put('combat_session',Object.assign({key:'state'},sess)));
-      }catch(e){}
-    }
-    var advRaw=localStorage.getItem('motherTree_customAdv');
-    if(advRaw){
-      try{
-        JSON.parse(advRaw).forEach(function(a){
-          if(!a.id)a.id='custom_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-          promises.push(db_put('custom_adversaries',a));
-        });
-      }catch(e){}
-    }
-    return Promise.all(promises)
-      .then(function(){return db_setting('data_migrated',true);})
-      .then(function(){
-        if(sessRaw||advRaw)
-          showToast('Your session data has been migrated to IndexedDB for safer storage.');
-      })
-      .catch(function(e){
-        console.warn('db_migrate: write failed, will retry next load',e);
-      });
-  });
-}
-
-// §EXPORT_IMPORT ═══════════════════════════════════════════════════════
-// EXPORT / IMPORT JSON BACKUP
-// ═══════════════════════════════════════════════════════════════════════
-function openSettingsModal(){document.getElementById('settings-modal-bg').classList.add('open');}
-function closeSettingsModal(){
-  document.getElementById('settings-modal-bg').classList.remove('open');
-  document.getElementById('sm-status').textContent='';
-}
-
-function exportData(){
-  Promise.all([
-    db_get('combat_session','state'),
-    db_getAll('custom_adversaries'),
-    db_getAll('toolkit_notes'),
-    db_getAll('generator_library'),
-    db_getAll('saved_encounters')
-  ]).then(function(results){
-    var payload={
-      version:1,
-      exported_at:new Date().toISOString(),
-      combat_session:results[0]||null,
-      custom_adversaries:results[1]||[],
-      toolkit_notes:results[2]||[],
-      generator_library:results[3]||[],
-      saved_encounters:results[4]||[]
-    };
-    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    a.href=url;
-    a.download='mother-tree-backup-'+new Date().toISOString().slice(0,10)+'.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    document.getElementById('sm-status').textContent='Export complete.';
-  }).catch(function(e){
-    document.getElementById('sm-status').textContent='Export failed: '+e.message;
-  });
-}
-
-function importData(input){
-  var file=input.files[0];if(!file)return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var payload;
-    try{payload=JSON.parse(e.target.result);}catch(err){
-      document.getElementById('sm-status').textContent='Invalid backup file — could not import.';
-      input.value='';return;
-    }
-    // Validate
-    if(payload.version!==1||
-       !['combat_session','custom_adversaries','toolkit_notes','generator_library','saved_encounters']
-         .every(function(k){return k in payload;})){
-      document.getElementById('sm-status').textContent='Invalid backup file — could not import.';
-      input.value='';return;
-    }
-    if(!confirm('This will overwrite your current data. Your existing data will be replaced. Continue?')){
-      input.value='';return;
-    }
-    var stores=['combat_session','custom_adversaries','toolkit_notes','generator_library','saved_encounters'];
-    var clears=stores.map(function(s){return db_clear(s);});
-    Promise.all(clears).then(function(){
-      var writes=[];
-      if(payload.combat_session)
-        writes.push(db_put('combat_session',Object.assign({key:'state'},payload.combat_session)));
-      (payload.custom_adversaries||[]).forEach(function(a){writes.push(db_put('custom_adversaries',a));});
-      (payload.toolkit_notes||[]).forEach(function(n){writes.push(db_put('toolkit_notes',n));});
-      (payload.generator_library||[]).forEach(function(g){writes.push(db_put('generator_library',g));});
-      (payload.saved_encounters||[]).forEach(function(enc){writes.push(db_put('saved_encounters',enc));});
-      return Promise.all(writes);
-    }).then(function(){
-      location.reload();
-    }).catch(function(err){
-      document.getElementById('sm-status').textContent='Import failed: '+err.message;
-    });
-  };
-  reader.readAsText(file);
-  input.value='';
-}
-
-// §SAVED_ENCOUNTERS ════════════════════════════════════════════════
-// SAVED ENCOUNTERS — SAVE, LOAD, MANAGE
-// ═══════════════════════════════════════════════════════════════════
-
-// Show/hide Save button based on cart contents (call from renderStage)
-function updateSaveEncBtn(){
-  var btn=document.getElementById('btn-save-enc');
-  if(btn)btn.style.display=(cart.length>0&&!battleStarted)?'':'none';
-}
-
-function openSaveEncounterPrompt(){
-  var prompt=document.getElementById('save-enc-prompt');
-  var linkRow=document.getElementById('sep-link');
-  if(!prompt)return;
-  document.getElementById('sep-name').value='Encounter '+(Date.now()%10000);
-  linkRow.style.display='none';
-  prompt.style.display='';
-  document.getElementById('sep-name').select();
-}
-function closeSaveEncounterPrompt(){
-  var prompt=document.getElementById('save-enc-prompt');
-  if(prompt)prompt.style.display='none';
-}
-
-function confirmSaveEncounter(){
-  var name=document.getElementById('sep-name').value.trim();
-  if(!name)return;
-  var enc={
-    id:'encounter_'+Date.now(),
-    name:name,
-    adversaries:JSON.parse(JSON.stringify(cart)),
-    savedAt:new Date().toISOString()
-  };
-  db_put('saved_encounters',enc).then(function(){
-    var linkCode='[[encounter:'+name+']]';
-    var codeEl=document.getElementById('sep-link-code');
-    if(codeEl)codeEl.textContent=linkCode;
-    document.getElementById('sep-link').style.display='';
-    renderSavedEncounterList();
-    showToast('"'+name+'" saved.');
-  }).catch(function(e){showToast('Save failed: '+e.message);});
-}
-
-function copySepLink(){
-  var code=document.getElementById('sep-link-code');
-  if(!code)return;
-  navigator.clipboard.writeText(code.textContent).then(function(){showToast('Link copied!');});
-}
-
-var _savedEncOpen=false;
-function toggleSavedEncSection(){
-  _savedEncOpen=!_savedEncOpen;
-  var list=document.getElementById('saved-enc-list');
-  var chev=document.getElementById('saved-enc-chevron');
-  if(list)list.style.display=_savedEncOpen?'block':'none';
-  if(chev)chev.textContent=_savedEncOpen?'▲':'▼';
-  if(_savedEncOpen)renderSavedEncounterList();
-}
-
-function renderSavedEncounterList(){
-  db_getAll('saved_encounters').then(function(encs){
-    var list=document.getElementById('saved-enc-list');if(!list)return;
-    if(!encs||!encs.length){list.innerHTML='<div style="padding:10px 16px;font-size:13px;color:var(--text-muted)">No saved encounters yet.</div>';return;}
-    list.innerHTML=encs.map(function(enc){
-      var date=enc.savedAt?enc.savedAt.slice(0,10):'';
-      var count=(enc.adversaries||[]).length;
-      return '<div class="saved-enc-row">'
-        +'<span class="saved-enc-name">'+escH(enc.name)+'</span>'
-        +'<span class="saved-enc-meta">'+count+' adv · '+date+'</span>'
-        +'<button class="saved-enc-load" data-loadenc="'+escH(enc.id)+'">Load</button>'
-        +'<button class="saved-enc-del" data-delenc="'+escH(enc.id)+'">Delete</button>'
-        +'</div>';
-    }).join('');
-  }).catch(function(){});
-}
-
-function loadSavedEncounter(id){
-  db_get('saved_encounters',id).then(function(enc){
-    if(!enc){showToast('Encounter not found.');return;}
-    _doLoadEncounter(enc);
-  });
-}
-
-function _doLoadEncounter(enc){
-  var hasContent=cart.length>0||combatants.length>0;
-  if(!hasContent){
-    _applyEncounter(enc,'replace');
-    return;
-  }
-  // Show confirmation with three options
-  var modal=document.createElement('div');
-  modal.className='enc-load-modal-bg';
-  modal.innerHTML='<div class="enc-load-modal">'
-    +'<div class="elm-title">Load "'+escH(enc.name)+'"</div>'
-    +'<div class="elm-body">There are already adversaries in this encounter.</div>'
-    +'<div class="elm-actions">'
-    +'<button class="elm-btn elm-replace">Replace</button>'
-    +'<button class="elm-btn elm-add">Add to Battle</button>'
-    +'<button class="elm-btn elm-cancel">Cancel</button>'
-    +'</div></div>';
-  document.body.appendChild(modal);
-  modal.querySelector('.elm-replace').onclick=function(){modal.remove();_applyEncounter(enc,'replace');};
-  modal.querySelector('.elm-add').onclick=function(){modal.remove();_applyEncounter(enc,'add');};
-  modal.querySelector('.elm-cancel').onclick=function(){modal.remove();};
-}
-
-function _applyEncounter(enc,mode){
-  if(mode==='replace'){
-    battleStarted=false;round=1;cart=[];combatants=[];
-    var beginBtn=document.getElementById('btn-begin');
-    var resetBtn=document.getElementById('btn-reset');
-    var addMoreBtn=document.getElementById('btn-add-more');
-    var roundBadge=document.getElementById('round-badge');
-    if(beginBtn)beginBtn.style.display='';
-    if(resetBtn)resetBtn.style.display='none';
-    if(addMoreBtn)addMoreBtn.style.display='none';
-    if(roundBadge)roundBadge.style.display='none';
-  }
-  var advs=JSON.parse(JSON.stringify(enc.adversaries||[]));
-  if(mode==='add'&&battleStarted){
-    advs.forEach(function(a){addCombatant(a);});
-  } else {
-    advs.forEach(function(a){
-      cart.push(Object.assign({},a,{_iid:++iid}));
-    });
-    syncBP();renderList();renderStage();statusBar();saveSession();
-  }
-  showToast('"'+enc.name+'" loaded.');
-  closeSaveEncounterPrompt();
-}
-
-function deleteSavedEncounter(id){
-  db_get('saved_encounters',id).then(function(enc){
-    if(!enc)return;
-    if(!confirm('Delete "'+enc.name+'"?'))return;
-    db_delete('saved_encounters',id).then(function(){
-      renderSavedEncounterList();
-      showToast('Encounter deleted.');
-    });
-  });
-}
-
-// Event delegation for saved-encounters load/delete buttons
-document.addEventListener('click',function(e){
-  var loadBtn=e.target.closest('[data-loadenc]');
-  if(loadBtn){loadSavedEncounter(loadBtn.dataset.loadenc);return;}
-  var delBtn=e.target.closest('[data-delenc]');
-  if(delBtn){deleteSavedEncounter(delBtn.dataset.delenc);return;}
-  // encounter links in lore tabs
-  var encLink=e.target.closest('.encounter-link');
-  if(encLink){
-    e.preventDefault();
-    var encName=encLink.dataset.encounterName;
-    db_getAll('saved_encounters').then(function(encs){
-      var enc=(encs||[]).find(function(x){return x.name===encName;});
-      if(!enc){showToast('No saved encounter named "'+encName+'" found.');return;}
-      _doLoadEncounter(enc);
-    });
-    return;
-  }
-});
-
 // §CUSTOM_ADV ═══════════════════════════════════════════════════════════
 // CUSTOM ADVERSARY SYSTEM
 // ═══════════════════════════════════════════════════════════
@@ -898,27 +527,11 @@ var STORAGE_KEY='motherTree_customAdv';
 var featRowId=0;
 
 function loadCustomAdv(){
-  return db_getAll('custom_adversaries').then(function(items){
-    customAdv=items||[];
-    customAdv.forEach(function(a){if(!ADV.find(function(x){return x.id===a.id;}))ADV.push(a);});
-  }).catch(function(){
-    // Fallback to localStorage if IndexedDB unavailable
-    try{var s=localStorage.getItem(STORAGE_KEY);if(s)customAdv=JSON.parse(s);}catch(e){}
-    customAdv.forEach(function(a){if(!ADV.find(function(x){return x.id===a.id;}))ADV.push(a);});
-  });
+  try{var s=localStorage.getItem(STORAGE_KEY);if(s)customAdv=JSON.parse(s);}catch(e){}
+  customAdv.forEach(function(a){if(!ADV.find(function(x){return x.id===a.id;}))ADV.push(a);});
 }
 function saveCustomAdvStorage(){
-  // Write each custom adversary; remove any that were deleted
-  var ids=customAdv.map(function(a){return a.id;});
-  customAdv.forEach(function(a){db_put('custom_adversaries',a).catch(function(){});});
-  // Sync deletes: get all stored, remove any not in current list
-  db_getAll('custom_adversaries').then(function(stored){
-    (stored||[]).forEach(function(a){
-      if(!ids.includes(a.id))db_delete('custom_adversaries',a.id).catch(function(){});
-    });
-  }).catch(function(){
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(customAdv));}catch(e){}
-  });
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(customAdv));}catch(e){}
 }
 
 function openCustomModal(editId){
@@ -1057,9 +670,7 @@ function saveSession(){
     tabOrder:tabOrder,
     loreTabs:loreTabs
   };
-  db_put('combat_session',Object.assign({key:'state'},state)).catch(function(){
-    try{localStorage.setItem(SESSION_KEY,JSON.stringify(state));}catch(e){}
-  });
+  try{localStorage.setItem(SESSION_KEY,JSON.stringify(state));}catch(e){}
 }
 
 function _restoreCombatant(c){
@@ -1072,114 +683,107 @@ function _restoreCombatant(c){
 
 function loadSession(){
   _restoring=true;
-  return db_get('combat_session','state').then(function(record){
-    var state=record?Object.assign({},record):null;
-    // Fallback: try localStorage if IndexedDB had nothing
-    if(!state){
-      try{var raw=localStorage.getItem(SESSION_KEY);if(raw)state=JSON.parse(raw);}catch(e){}
+  try{
+    var raw=localStorage.getItem(SESSION_KEY);
+    if(!raw){_restoring=false;return;}
+    var state=JSON.parse(raw);
+
+    // ── Restore battles ──
+    if(state.battles&&state.battles.length){
+      battleTabCounter=state.battleTabCounter||state.battles.length;
+      battles=state.battles.map(function(b){
+        return {
+          id:b.id,name:b.name||'Battle 1',
+          battleStarted:!!b.battleStarted,round:b.round||1,
+          playerCount:b.playerCount||4,iid:b.iid||0,
+          cart:b.cart||[],
+          combatants:(b.combatants||[]).map(_restoreCombatant)
+        };
+      });
+      activeBattleId=state.activeBattleId||battles[0].id;
+      loadBattleState(currentBattle());
+    } else if(state.playerCount!=null){
+      // Legacy single-battle format
+      battleTabCounter=1;
+      battles=[{
+        id:'battle-1',name:'Battle 1',
+        battleStarted:!!state.battleStarted,round:state.round||1,
+        playerCount:state.playerCount||4,iid:state.iid||0,
+        cart:state.cart||[],
+        combatants:(state.combatants||[]).map(_restoreCombatant)
+      }];
+      activeBattleId='battle-1';
+      loadBattleState(currentBattle());
     }
-    if(!state){_restoring=false;return;}
-    try{
-      // ── Restore battles ──
-      if(state.battles&&state.battles.length){
-        battleTabCounter=state.battleTabCounter||state.battles.length;
-        battles=state.battles.map(function(b){
-          return {
-            id:b.id,name:b.name||'Battle 1',
-            battleStarted:!!b.battleStarted,round:b.round||1,
-            playerCount:b.playerCount||4,iid:b.iid||0,
-            cart:b.cart||[],
-            combatants:(b.combatants||[]).map(_restoreCombatant)
-          };
-        });
-        activeBattleId=state.activeBattleId||battles[0].id;
-        loadBattleState(currentBattle());
-      } else if(state.playerCount!=null){
-        // Legacy single-battle format
-        battleTabCounter=1;
-        battles=[{
-          id:'battle-1',name:'Battle 1',
-          battleStarted:!!state.battleStarted,round:state.round||1,
-          playerCount:state.playerCount||4,iid:state.iid||0,
-          cart:state.cart||[],
-          combatants:(state.combatants||[]).map(_restoreCombatant)
-        }];
-        activeBattleId='battle-1';
-        loadBattleState(currentBattle());
-      }
 
-      // Apply battle UI state to DOM
-      if(battles.length){
-        document.getElementById('player-count').value=playerCount;
-        document.getElementById('btn-begin').style.display=battleStarted?'none':'';
-        document.getElementById('btn-reset').style.display=battleStarted?'':'none';
-        document.getElementById('btn-add-more').style.display=battleStarted?'':'none';
-        document.getElementById('round-badge').style.display=battleStarted?'':'none';
-        if(battleStarted)document.getElementById('round-num').textContent=round;
-      }
+    // Apply battle UI state to DOM
+    if(battles.length){
+      document.getElementById('player-count').value=playerCount;
+      document.getElementById('btn-begin').style.display=battleStarted?'none':'';
+      document.getElementById('btn-reset').style.display=battleStarted?'':'none';
+      document.getElementById('btn-add-more').style.display=battleStarted?'':'none';
+      document.getElementById('round-badge').style.display=battleStarted?'':'none';
+      if(battleStarted)document.getElementById('round-num').textContent=round;
+    }
 
-      // ── Restore tab order and lore panels ──
-      if(state.tabOrder){
-        // New format: tabOrder includes both battle and lore entries
-        tabOrder=state.tabOrder;
-        tabOrder.forEach(function(entry){
-          if(entry.type==='lore'){
-            var rawMd=(state.loreTabs&&state.loreTabs[entry.id])||'';
-            tabRawMd[entry.id]=rawMd;
-            var num=parseInt((entry.id||'').split('-')[1]||0);
-            if(num>tabCounter)tabCounter=num;
-            var html=renderMd(rawMd,entry.title);
-            var panel=document.createElement('div');
-            panel.className='tab-panel';panel.id='panel-'+entry.id;
-            panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
-            document.getElementById('dynamic-panels').appendChild(panel);
-          }
-        });
-      } else if(state.tabs&&state.tabs.length){
-        // Legacy format: build tabOrder from battles + flat tabs array
-        tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
-        state.tabs.forEach(function(t,i){
-          var id='tab-'+(i+1);
-          if(i+1>tabCounter)tabCounter=i+1;
-          tabRawMd[id]=t.rawMd||'';
-          tabOrder.push({type:'lore',id:id,title:t.title,icon:t.icon||'📜'});
-          var html=renderMd(t.rawMd||'',t.title);
+    // ── Restore tab order and lore panels ──
+    if(state.tabOrder){
+      // New format: tabOrder includes both battle and lore entries
+      tabOrder=state.tabOrder;
+      tabOrder.forEach(function(entry){
+        if(entry.type==='lore'){
+          var rawMd=(state.loreTabs&&state.loreTabs[entry.id])||'';
+          tabRawMd[entry.id]=rawMd;
+          var num=parseInt((entry.id||'').split('-')[1]||0);
+          if(num>tabCounter)tabCounter=num;
+          var html=renderMd(rawMd,entry.title);
           var panel=document.createElement('div');
-          panel.className='tab-panel';panel.id='panel-'+id;
+          panel.className='tab-panel';panel.id='panel-'+entry.id;
           panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
           document.getElementById('dynamic-panels').appendChild(panel);
-        });
-      } else {
-        // No lore tabs — just battles
-        tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
-      }
+        }
+      });
+    } else if(state.tabs&&state.tabs.length){
+      // Legacy format: build tabOrder from battles + flat tabs array
+      tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
+      state.tabs.forEach(function(t,i){
+        var id='tab-'+(i+1);
+        if(i+1>tabCounter)tabCounter=i+1;
+        tabRawMd[id]=t.rawMd||'';
+        tabOrder.push({type:'lore',id:id,title:t.title,icon:t.icon||'📜'});
+        var html=renderMd(t.rawMd||'',t.title);
+        var panel=document.createElement('div');
+        panel.className='tab-panel';panel.id='panel-'+id;
+        panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+        document.getElementById('dynamic-panels').appendChild(panel);
+      });
+    } else {
+      // No lore tabs — just battles
+      tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
+    }
 
-      renderAllTabs();
+    renderAllTabs();
 
-      // ── Restore active tab ──
-      var savedActive=state.activeTab||'combat';
-      if(savedActive!=='combat'&&tabRawMd[savedActive]){
-        activeTab=savedActive;
-        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+savedActive));
-        document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===savedActive));
-      } else {
-        activeTab='combat';
-        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
-        // Legacy activeTabIdx fallback
-        if(state.activeTabIdx>=0&&state.tabs&&state.tabs[state.activeTabIdx]){
-          var lid='tab-'+(state.activeTabIdx+1);
-          if(tabRawMd[lid]){activeTab=lid;
-            document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+lid));
-            document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===lid));
-          }
+    // ── Restore active tab ──
+    var savedActive=state.activeTab||'combat';
+    if(savedActive!=='combat'&&tabRawMd[savedActive]){
+      activeTab=savedActive;
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+savedActive));
+      document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===savedActive));
+    } else {
+      activeTab='combat';
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+      // Legacy activeTabIdx fallback
+      if(state.activeTabIdx>=0&&state.tabs&&state.tabs[state.activeTabIdx]){
+        var lid='tab-'+(state.activeTabIdx+1);
+        if(tabRawMd[lid]){activeTab=lid;
+          document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+lid));
+          document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===lid));
         }
       }
-    }catch(e){console.error('loadSession:',e);}
-    _restoring=false;
-  }).catch(function(e){
-    console.error('loadSession db error:',e);
-    _restoring=false;
-  });
+    }
+  }catch(e){console.error('loadSession:',e);}
+  _restoring=false;
 }
 
 // §ADV_LIST
@@ -1258,17 +862,63 @@ document.getElementById('custom-modal-bg').addEventListener('click',function(e){
 });
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCustomModal();});
 
+// §TOOLKIT ════════════════════════════════════════════════════════
+// TOOLKIT PANEL SHELL — toggle, tab switching, state persistence
+// ═════════════════════════════════════════════════════════════════
+var _toolkitOpen=false;
+var _toolkitTab='rules';
+
+function openToolkit(){
+  _toolkitOpen=true;
+  document.getElementById('toolkit-panel').classList.add('open');
+  document.getElementById('toolkit-toggle').textContent='›';
+  if(window.innerWidth<=768)document.getElementById('toolkit-overlay').classList.add('active');
+  else document.body.classList.add('toolkit-open');
+  try{localStorage.setItem('motherTree_toolkitOpen','true');}catch(e){}
+}
+function closeToolkit(){
+  _toolkitOpen=false;
+  document.getElementById('toolkit-panel').classList.remove('open');
+  document.getElementById('toolkit-toggle').textContent='‹';
+  document.getElementById('toolkit-overlay').classList.remove('active');
+  document.body.classList.remove('toolkit-open');
+  try{localStorage.setItem('motherTree_toolkitOpen','false');}catch(e){}
+}
+function toggleToolkit(){_toolkitOpen?closeToolkit():openToolkit();}
+
+function switchToolkitTab(tab){
+  _toolkitTab=tab;
+  document.querySelectorAll('.tk-tab').forEach(function(b){
+    b.classList.toggle('active',b.dataset.tktab===tab);
+  });
+  document.querySelectorAll('.tk-panel').forEach(function(p){
+    p.classList.toggle('active',p.id==='tkp-'+tab);
+  });
+  try{localStorage.setItem('motherTree_toolkitTab',tab);}catch(e){}
+  // Lazy render tab content on first open
+  if(tab==='rules'&&typeof _rulesRendered!=='undefined'&&!_rulesRendered)renderRulesTab();
+  if(tab==='notes'&&typeof renderNotesTab==='function')renderNotesTab();
+  if(tab==='gen'&&typeof _genRendered!=='undefined'&&!_genRendered)renderGeneratorsTab();
+}
+
+function restoreToolkitState(){
+  try{
+    var wasOpen=localStorage.getItem('motherTree_toolkitOpen')==='true';
+    var savedTab=localStorage.getItem('motherTree_toolkitTab')||'rules';
+    switchToolkitTab(savedTab);
+    if(wasOpen)openToolkit();
+  }catch(e){}
+}
+
 // §INIT
 // ── Init ──────────────────────────────────────────────────
-db_migrate().then(function(){
-  return loadCustomAdv();
-}).then(function(){
-  return loadSession();
-}).then(function(){
+loadCustomAdv();
+(function init(){
+  loadSession();
   // Create the first battle if no session existed
   if(battles.length===0){
     battleTabCounter=1;
-    var b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
+    const b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
     battles.push(b);
     activeBattleId='battle-1';
     tabOrder=[{type:'battle',id:'battle-1'}];
@@ -1277,36 +927,6 @@ db_migrate().then(function(){
   updateBP();buildFilters();renderList();
   if(battleStarted){renderCombat();}else{renderStage();}
   statusBar();
+  restoreToolkitState();
   if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}
-}).catch(function(e){
-  console.error('init error:',e);
-  // Fallback: run init synchronously if async chain fails
-  try{loadCustomAdv();}catch(ex){}
-  loadSession().then(function(){
-    if(battles.length===0){
-      battleTabCounter=1;
-      var b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
-      battles.push(b);
-      activeBattleId='battle-1';
-      tabOrder=[{type:'battle',id:'battle-1'}];
-      renderAllTabs();
-    }
-    updateBP();buildFilters();renderList();
-    if(battleStarted){renderCombat();}else{renderStage();}
-    statusBar();
-    if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}
-  }).catch(function(){
-    if(battles.length===0){
-      battleTabCounter=1;
-      var b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
-      battles.push(b);
-      activeBattleId='battle-1';
-      tabOrder=[{type:'battle',id:'battle-1'}];
-      renderAllTabs();
-    }
-    updateBP();buildFilters();renderList();
-    if(battleStarted){renderCombat();}else{renderStage();}
-    statusBar();
-    if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}
-  });
-});
+})();
