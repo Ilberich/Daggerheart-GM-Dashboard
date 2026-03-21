@@ -695,8 +695,8 @@ function importData(input){
     }
     // Validate
     if(payload.version!==1||
-       !['combat_session','custom_adversaries','toolkit_notes','generator_library']
-         .some(function(k){return k in payload;})){
+       !['combat_session','custom_adversaries','toolkit_notes','generator_library','saved_encounters']
+         .every(function(k){return k in payload;})){
       document.getElementById('sm-status').textContent='Invalid backup file — could not import.';
       input.value='';return;
     }
