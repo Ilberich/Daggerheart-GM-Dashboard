@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Environment Generator — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #080b0f; --surface: #0e1218; --card: #131820;
+    --border: #1e2535; --border-hi: #2e3a50;
+    --text: #c8d4e0; --text-dim: #6a7a8a; --text-faint: #3a4555;
+    --hope: #d4a843; --hope-dim: #7a5f20;
+    --fear: #c0392b; --green: #2d6a4f; --green-hi: #52b788;
+    --arcane: #6e56a8; --arcane-hi: #a585e0;
+    --font-display: 'Cinzel', serif;
+    --font-body: 'Crimson Pro', serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--font-body);
+    padding: 32px; min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(46,58,80,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(45,106,79,0.12) 0%, transparent 50%);
+  }
+  h1 { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.18em; color: var(--text-dim); margin-bottom: 6px; }
+  .subtitle { font-family: var(--font-body); font-size: 14px; color: var(--text-dim); font-style: italic; margin-bottom: 28px; }
+
+  /* ── Two-panel demo layout ────────────────────────────── */
+  .demo { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+
+  /* ── Toolkit Panel ───────────────────────────────────── */
+  .toolkit {
+    background: #090c11;
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    max-height: 780px;
+  }
+  .tk-tabs { display: flex; border-bottom: 1px solid var(--border); background: #07090d; flex-shrink: 0; }
+  .tk-tab { flex: 1; padding: 9px 2px; text-align: center; font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tk-tab.active { color: var(--hope); border-bottom-color: var(--hope); background: #09111a; }
+  .tk-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .tk-body::-webkit-scrollbar { width: 3px; }
+  .tk-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+  .section-label {
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em;
+    color: var(--text-faint); text-transform: uppercase;
+    padding-bottom: 4px; border-bottom: 1px solid var(--border);
+  }
+
+  /* Environment type chips */
+  .env-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .env-chip {
+    font-family: var(--font-mono); font-size: 9px;
+    padding: 4px 9px; border-radius: 5px;
+    border: 1px solid var(--border); color: var(--text-faint);
+    cursor: pointer; transition: all 0.12s;
+  }
+  .env-chip.active { border-color: var(--green-hi); color: var(--green-hi); background: rgba(82,183,136,0.1); }
+  .env-chip:hover:not(.active) { border-color: var(--border-hi); color: var(--text-dim); }
+
+  /* Quick controls row */
+  .quick-row { display: flex; gap: 6px; align-items: center; }
+  .tier-select {
+    font-family: var(--font-mono); font-size: 10px;
+    background: var(--card); border: 1px solid var(--border-hi);
+    color: var(--text); border-radius: 4px; padding: 5px 7px;
+    outline: none; cursor: pointer; flex: 1;
+  }
+  .generate-btn {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+    padding: 5px 14px; border-radius: 4px;
+    border: 1px solid var(--green); color: var(--green-hi);
+    background: rgba(82,183,136,0.1); cursor: pointer;
+    transition: all 0.12s; white-space: nowrap;
+  }
+  .generate-btn:hover { background: rgba(82,183,136,0.2); }
+
+  /* Advanced expander */
+  .adv-toggle {
+    font-family: var(--font-mono); font-size: 9px; color: var(--arcane-hi);
+    cursor: pointer; display: flex; align-items: center; gap: 5px;
+    padding: 2px 0; transition: color 0.12s; user-select: none;
+  }
+  .adv-toggle:hover { color: var(--arcane-hi); opacity: 0.8; }
+  .adv-chevron { transition: transform 0.2s; display: inline-block; }
+  .adv-toggle.open .adv-chevron { transform: rotate(90deg); }
+
+  .adv-panel {
+    background: rgba(110,86,168,0.06);
+    border: 1px solid rgba(110,86,168,0.2);
+    border-radius: 6px; padding: 10px;
+    display: none; flex-direction: column; gap: 8px;
+  }
+  .adv-panel.open { display: flex; }
+
+  .field-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.1em; color: var(--text-faint); margin-bottom: 3px; }
+  .field-input {
+    font-family: var(--font-mono); font-size: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; padding: 5px 8px;
+    outline: none; width: 100%; transition: border-color 0.12s;
+  }
+  .field-input:focus { border-color: var(--arcane-hi); }
+
+  .mini-chips { display: flex; gap: 3px; flex-wrap: wrap; }
+  .mini-chip {
+    font-family: var(--font-mono); font-size: 8px; padding: 3px 7px;
+    border-radius: 4px; border: 1px solid var(--border);
+    color: var(--text-faint); cursor: pointer; transition: all 0.1s;
+  }
+  .mini-chip.active { border-color: var(--arcane-hi); color: var(--arcane-hi); background: rgba(110,86,168,0.1); }
+
+  .adv-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* ── Stat Block Result ───────────────────────────────── */
+  .stat-block {
+    background: var(--card);
+    border: 1px solid var(--green);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .sb-header {
+    background: rgba(45,106,79,0.2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+  .sb-name { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.1em; color: var(--green-hi); }
+  .sb-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); margin-top: 2px; }
+  .sb-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .sb-row { display: flex; flex-direction: column; gap: 2px; }
+  .sb-row-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.12em; color: var(--text-faint); text-transform: uppercase; }
+  .sb-row-value { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+  .sb-row-value.editable {
+    background: transparent; border: none; border-bottom: 1px dashed var(--border);
+    color: var(--text-dim); font-family: var(--font-body); font-size: 12px;
+    width: 100%; outline: none; padding: 1px 0;
+  }
+  .sb-row-value.editable:focus { border-bottom-color: var(--green-hi); color: var(--text); }
+
+  .sb-diff { display: flex; align-items: center; gap: 8px; }
+  .diff-val { font-family: var(--font-display); font-size: 20px; color: var(--hope); line-height: 1; }
+  .diff-controls { display: flex; flex-direction: column; gap: 2px; }
+  .diff-btn { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); cursor: pointer; border: 1px solid var(--border); border-radius: 3px; padding: 0px 5px; background: var(--card); line-height: 1.4; }
+  .diff-btn:hover { color: var(--hope); border-color: var(--hope-dim); }
+
+  .adv-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+  .adv-tag { font-family: var(--font-mono); font-size: 8px; padding: 2px 6px; border-radius: 3px; background: rgba(239,68,68,0.1); color: #e05c4b; border: 1px solid rgba(239,68,68,0.2); }
+  .adv-tag.g { background: rgba(82,183,136,0.1); color: var(--green-hi); border-color: rgba(82,183,136,0.2); }
+  .adv-tag.a { background: rgba(110,86,168,0.1); color: var(--arcane-hi); border-color: rgba(110,86,168,0.2); }
+
+  /* Feature entries */
+  .feature-list { display: flex; flex-direction: column; gap: 7px; }
+  .feature-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--border-hi);
+    border-radius: 4px;
+    padding: 8px 10px;
+  }
+  .feature-entry.passive { border-left-color: var(--arcane); }
+  .feature-entry.action { border-left-color: var(--hope-dim); }
+
+  .feat-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .feat-name-input {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em;
+    color: var(--text); background: transparent; border: none;
+    border-bottom: 1px dashed var(--border); outline: none; flex: 1;
+    padding: 1px 0;
+  }
+  .feat-name-input:focus { border-bottom-color: var(--hope); color: var(--hope); }
+  .feat-type-badge {
+    font-family: var(--font-mono); font-size: 8px; padding: 2px 6px;
+    border-radius: 3px; flex-shrink: 0;
+  }
+  .feat-type-badge.passive { background: rgba(110,86,168,0.15); color: var(--arcane-hi); }
+  .feat-type-badge.action { background: rgba(212,168,67,0.12); color: var(--hope); }
+  .feat-cost { font-family: var(--font-mono); font-size: 8px; color: var(--fear); flex-shrink: 0; }
+
+  .feat-desc-input {
+    font-family: var(--font-body); font-size: 11px; color: var(--text-dim);
+    background: transparent; border: none; outline: none; width: 100%;
+    resize: none; line-height: 1.5; padding: 0;
+  }
+  .feat-desc-input:focus { color: var(--text); }
+
+  .feat-flavor { font-family: var(--font-body); font-size: 10px; color: var(--text-faint); font-style: italic; margin-top: 3px; }
+
+  /* Stat block footer actions */
+  .sb-actions {
+    display: flex; gap: 6px; padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+  }
+  .action-btn {
+    font-family: var(--font-mono); font-size: 9px; padding: 4px 10px;
+    border-radius: 4px; border: 1px solid var(--border);
+    cursor: pointer; transition: all 0.12s;
+  }
+  .action-btn.save { border-color: var(--green); color: var(--green-hi); background: rgba(82,183,136,0.08); }
+  .action-btn.save:hover { background: rgba(82,183,136,0.18); }
+  .action-btn.pin { border-color: var(--hope-dim); color: var(--hope); background: rgba(212,168,67,0.06); }
+  .action-btn.pin:hover { background: rgba(212,168,67,0.14); }
+  .action-btn.discard { color: var(--text-faint); }
+  .action-btn.discard:hover { color: var(--fear); border-color: var(--fear); }
+
+  /* ── Right panel: saved library ──────────────────────── */
+  .library-panel {
+    background: #090c11;
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .lib-header {
+    background: #07090d;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .lib-title { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.14em; color: var(--green-hi); }
+  .lib-count { font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); }
+  .lib-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .lib-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--green);
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .lib-card:hover { border-color: var(--green-hi); }
+  .lib-card-name { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.08em; color: var(--green-hi); margin-bottom: 3px; }
+  .lib-card-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); margin-bottom: 5px; }
+  .lib-card-impulse { font-family: var(--font-body); font-size: 11px; color: var(--text-dim); font-style: italic; line-height: 1.4; }
+  .lib-card-actions { display: flex; gap: 5px; margin-top: 7px; }
+  .lib-mini-btn {
+    font-family: var(--font-mono); font-size: 8px; padding: 3px 8px;
+    border-radius: 3px; border: 1px solid var(--border);
+    color: var(--text-faint); cursor: pointer; transition: all 0.1s;
+  }
+  .lib-mini-btn:hover { color: var(--hope); border-color: var(--hope-dim); }
+  .lib-mini-btn.danger:hover { color: var(--fear); border-color: var(--fear); }
+
+  .lib-empty { font-family: var(--font-body); font-size: 13px; color: var(--text-faint); font-style: italic; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+
+<h1>Section 4 revised · Environment Generator</h1>
+<p class="subtitle">Quick by default, advanced when needed. All fields editable. Saves to a personal library.</p>
+
+<div class="demo">
+
+  <!-- LEFT: Toolkit Panel -->
+  <div class="toolkit">
+    <div class="tk-tabs">
+      <div class="tk-tab">🔍 RULES</div>
+      <div class="tk-tab">📝 NOTES</div>
+      <div class="tk-tab active">🎲 GEN</div>
+      <div class="tk-tab">🎵 SFX</div>
+    </div>
+    <div class="tk-body">
+
+      <div class="section-label">🌍 Environment Generator</div>
+
+      <!-- Step 1: Type -->
+      <div>
+        <div class="field-label" style="margin-bottom:5px;">Environment Type</div>
+        <div class="env-chips">
+          <div class="env-chip active" onclick="selectChip(this)">🌲 Forest</div>
+          <div class="env-chip" onclick="selectChip(this)">🌊 River</div>
+          <div class="env-chip" onclick="selectChip(this)">⛰ Mountain</div>
+          <div class="env-chip" onclick="selectChip(this)">🏘 Settlement</div>
+          <div class="env-chip" onclick="selectChip(this)">🏚 Ruin</div>
+          <div class="env-chip" onclick="selectChip(this)">🕳 Cave</div>
+          <div class="env-chip" onclick="selectChip(this)">✨ Arcane</div>
+          <div class="env-chip" onclick="selectChip(this)">🌊 Coastal</div>
+        </div>
+      </div>
+
+      <!-- Step 2: Quick controls -->
+      <div>
+        <div class="field-label" style="margin-bottom:5px;">Tier &amp; Quick Generate</div>
+        <div class="quick-row">
+          <select class="tier-select" id="tier-select">
+            <option>Tier 1 — Easy</option>
+            <option selected>Tier 2 — Standard</option>
+            <option>Tier 3 — Dangerous</option>
+            <option>Tier 4 — Legendary</option>
+          </select>
+          <button class="generate-btn" onclick="generateBlock()">⟳ Generate</button>
+        </div>
+      </div>
+
+      <!-- Advanced toggle -->
+      <div>
+        <div class="adv-toggle" id="adv-toggle" onclick="toggleAdv()">
+          <span class="adv-chevron">›</span>
+          <span>Advanced options</span>
+        </div>
+        <div class="adv-panel" id="adv-panel" style="margin-top:6px;">
+          <div>
+            <div class="field-label">Sub-type</div>
+            <div class="mini-chips">
+              <div class="mini-chip active" onclick="toggleMini(this)">Traversal</div>
+              <div class="mini-chip" onclick="toggleMini(this)">Combat</div>
+              <div class="mini-chip" onclick="toggleMini(this)">Social</div>
+              <div class="mini-chip" onclick="toggleMini(this)">Exploration</div>
+            </div>
+          </div>
+          <div class="adv-row">
+            <div>
+              <div class="field-label">Difficulty</div>
+              <input class="field-input" type="number" value="13" min="5" max="25" />
+            </div>
+            <div>
+              <div class="field-label">No. Features</div>
+              <input class="field-input" type="number" value="3" min="2" max="5" />
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Feature mix</div>
+            <div class="mini-chips">
+              <div class="mini-chip active" onclick="toggleMini(this)">Random</div>
+              <div class="mini-chip" onclick="toggleMini(this)">More Passive</div>
+              <div class="mini-chip" onclick="toggleMini(this)">More Action</div>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Impulses (comma-separated)</div>
+            <input class="field-input" type="text" placeholder="e.g. divide the party, exhaust resources..." />
+          </div>
+        </div>
+      </div>
+
+      <!-- Generated Stat Block -->
+      <div id="stat-block-wrap">
+        <div class="stat-block">
+          <div class="sb-header">
+            <div class="sb-name" id="sb-name" contenteditable="true">THORNWOOD CROSSING</div>
+            <div class="sb-meta">Tier 2 Traversal · Forest</div>
+          </div>
+          <div class="sb-body">
+
+            <div class="sb-row">
+              <div class="sb-row-label">Description</div>
+              <input class="sb-row-value editable" value="A dense forest path split by a collapsed bridge over a fast ravine — the only way through is improvised." />
+            </div>
+
+            <div class="sb-row">
+              <div class="sb-row-label">Impulses</div>
+              <input class="sb-row-value editable" value="Divide the party, exhaust resources, punish haste" />
+            </div>
+
+            <div class="sb-row">
+              <div class="sb-row-label">Difficulty</div>
+              <div class="sb-diff">
+                <div class="diff-val" id="diff-val">13</div>
+                <div class="diff-controls">
+                  <div class="diff-btn" onclick="changeDiff(1)">▲</div>
+                  <div class="diff-btn" onclick="changeDiff(-1)">▼</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sb-row">
+              <div class="sb-row-label">Potential Adversaries</div>
+              <div class="adv-tags">
+                <span class="adv-tag">Bandit</span>
+                <span class="adv-tag">Wolf Pack</span>
+                <span class="adv-tag g">Dryad</span>
+                <span class="adv-tag g">Forest Spirit</span>
+                <span class="adv-tag a">Hexer</span>
+              </div>
+            </div>
+
+            <div class="sb-row">
+              <div class="sb-row-label">Features</div>
+              <div class="feature-list">
+
+                <div class="feature-entry passive">
+                  <div class="feat-header">
+                    <input class="feat-name-input" value="Treacherous Crossing" />
+                    <span class="feat-type-badge passive">PASSIVE</span>
+                  </div>
+                  <textarea class="feat-desc-input" rows="2">Any PC attempting to cross the ravine must complete a Progress Countdown (4). A roll with Fear triggers Undertow immediately without spending Fear.</textarea>
+                  <div class="feat-flavor">How does your character tackle the gap? What do they risk to get across faster?</div>
+                </div>
+
+                <div class="feature-entry action">
+                  <div class="feat-header">
+                    <input class="feat-name-input" value="Undertow" />
+                    <span class="feat-type-badge action">ACTION</span>
+                    <span class="feat-cost">✦ Fear</span>
+                  </div>
+                  <textarea class="feat-desc-input" rows="2">A PC in the ravine must make an Agility Reaction Roll. On a failure, they take 2d6+2 physical damage and become Vulnerable until they climb out.</textarea>
+                  <div class="feat-flavor">What pulls them down? What do they lose in the current?</div>
+                </div>
+
+                <div class="feature-entry action">
+                  <div class="feat-header">
+                    <input class="feat-name-input" value="Canopy Ambush" />
+                    <span class="feat-type-badge action">ACTION</span>
+                    <span class="feat-cost">✦✦ Fear</span>
+                  </div>
+                  <textarea class="feat-desc-input" rows="2">Something drops from the canopy onto a chosen PC. They are Restrained until they succeed on a Strength roll (DC 13) on their action.</textarea>
+                  <div class="feat-flavor">What lives in these trees? Has it been watching long?</div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+          <div class="sb-actions">
+            <button class="action-btn save" onclick="saveEnv()">💾 Save to Library</button>
+            <button class="action-btn pin" onclick="alert('Pinned to Session Notes!')">📌 Pin</button>
+            <button class="action-btn discard" onclick="document.getElementById('stat-block-wrap').style.display='none'">✕ Discard</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: Saved Environment Library -->
+  <div class="library-panel">
+    <div class="lib-header">
+      <div class="lib-title">🌿 Environment Library</div>
+      <div class="lib-count" id="lib-count">2 saved</div>
+    </div>
+    <div class="lib-body" id="lib-body">
+
+      <div class="lib-card">
+        <div class="lib-card-name">RAGING RIVER</div>
+        <div class="lib-card-meta">Tier 1 · Traversal · River</div>
+        <div class="lib-card-impulse">"Flood the crossing, carry away the unready, divide the land"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin to Notes</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+          <div class="lib-mini-btn danger">✕</div>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <div class="lib-card-name">THE ASHFALL RUINS</div>
+        <div class="lib-card-meta">Tier 3 · Exploration · Ruin</div>
+        <div class="lib-card-impulse">"Punish the reckless, bury secrets, collapse under pressure"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin to Notes</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+          <div class="lib-mini-btn danger">✕</div>
+        </div>
+      </div>
+
+      <div id="saved-thornwood" style="display:none;" class="lib-card">
+        <div class="lib-card-name">THORNWOOD CROSSING</div>
+        <div class="lib-card-meta">Tier 2 · Traversal · Forest</div>
+        <div class="lib-card-impulse">"Divide the party, exhaust resources, punish haste"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin to Notes</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+          <div class="lib-mini-btn danger">✕</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<p style="margin-top:24px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);max-width:860px;">
+  <strong style="color:var(--text);">Quick flow:</strong> Pick type → pick tier → Generate. Done in 3 clicks. The stat block matches the Daggerheart format exactly — Name, Tier, Sub-type, Description, Impulses, Difficulty, Potential Adversaries, and Features with type badges and Fear costs.
+</p>
+<p style="margin-top:8px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);max-width:860px;">
+  <strong style="color:var(--text);">Every field is editable inline</strong> before saving — click any name, description, or feature text to change it. Difficulty has ▲▼ buttons. The Advanced panel lets you control sub-type, exact difficulty, feature count, and feature mix before generating.
+</p>
+<p style="margin-top:8px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);max-width:860px;">
+  <strong style="color:var(--text);">Save to Library</strong> stores it in IndexedDB. The library lives in the right panel (or a dedicated section of the Arsenal sidebar in the real app). Each saved environment can be loaded back, pinned to session notes, edited, or deleted.
+</p>
+<p style="margin-top:12px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);max-width:860px;">
+  <strong style="color:var(--text);">Does this design feel right?</strong> Should saved environments live in the Arsenal sidebar alongside adversaries, or in a separate Environments section?
+</p>
+
+<script>
+let diffVal = 13;
+function changeDiff(d) { diffVal = Math.max(5, Math.min(25, diffVal + d)); document.getElementById('diff-val').textContent = diffVal; }
+function selectChip(el) { document.querySelectorAll('.env-chip').forEach(c => c.classList.remove('active')); el.classList.add('active'); }
+function toggleAdv() {
+  const t = document.getElementById('adv-toggle');
+  const p = document.getElementById('adv-panel');
+  t.classList.toggle('open');
+  p.classList.toggle('open');
+}
+function toggleMini(el) {
+  const parent = el.closest('.mini-chips');
+  parent.querySelectorAll('.mini-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+function generateBlock() {
+  // In real app, this generates a full stat block based on selections
+  // Here we just flash the existing one as feedback
+  const sb = document.getElementById('stat-block-wrap');
+  sb.style.display = '';
+  sb.style.opacity = '0';
+  sb.style.transition = 'opacity 0.3s';
+  setTimeout(() => { sb.style.opacity = '1'; }, 10);
+}
+function saveEnv() {
+  document.getElementById('saved-thornwood').style.display = '';
+  document.getElementById('lib-count').textContent = '3 saved';
+  alert('THORNWOOD CROSSING saved to your Environment Library!');
+}
+</script>
+</body>
+</html>
