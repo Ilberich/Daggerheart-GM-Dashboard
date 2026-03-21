@@ -912,6 +912,341 @@ function restoreToolkitState(){
   }).catch(function(){});
 }
 
+// §RULES_TAB ══════════════════════════════════════════════════════
+// RULES REFERENCE TAB
+// ═════════════════════════════════════════════════════════════════
+
+var RULES=[
+  // ── Core Rolls ──
+  {id:'r-action-roll',cat:'Core Rolls',name:'Action Roll',
+   summary:'Roll 2d12, add modifier, meet/exceed Difficulty.',
+   body:'Roll 2d12 (Hope Die + Fear Die), add trait modifier. Meet or exceed Difficulty to succeed. If Hope > Fear: Success with Hope. If Fear > Hope: Success with Fear. If equal: Success with Hope (ties favor Hope).'},
+  {id:'r-crit',cat:'Core Rolls',name:'Critical Success',
+   summary:'Both dice show the same number.',
+   body:'Both dice show the same number. Exceptional narrative outcome.'},
+  {id:'r-advantage',cat:'Core Rolls',name:'Advantage',
+   summary:'Roll extra die, keep highest.',
+   body:'Roll an extra die, keep the highest result.'},
+  {id:'r-disadvantage',cat:'Core Rolls',name:'Disadvantage',
+   summary:'Roll extra die, keep lowest.',
+   body:'Roll an extra die, keep the lowest result.'},
+  {id:'r-fate',cat:'Core Rolls',name:'Fate Roll',
+   summary:'Optional — GM asks player to roll one die for narrative.',
+   body:'(Optional) GM asks a player to roll only their Hope or Fear Die to let chance decide a narrative outcome; the die type adds flavor but does not grant Hope or Fear.'},
+  {id:'r-difficulty',cat:'Core Rolls',name:'Difficulty',
+   summary:'Standard values: 8 / 11 / 14 / 17 / 20 / 23 / 26.',
+   body:'Standard Difficulty values: 8 (Very Easy), 11 (Easy), 14 (Moderate/T2 standard), 17 (Hard/T3 standard), 20 (Very Hard/T4 standard), 23 (Extreme), 26 (Impossible). Difficulty = 11 + (2 × Tier) as a baseline.'},
+  // ── Hope & Fear ──
+  {id:'r-gain-hope',cat:'Hope & Fear',name:'Gaining Hope',
+   summary:'Gain 1 Hope on success with Hope. Max 6.',
+   body:'Players gain 1 Hope on a success with Hope. Max Hope = 6.'},
+  {id:'r-spend-hope',cat:'Hope & Fear',name:'Spending Hope',
+   summary:'Activate abilities, power attacks, or help allies (+1d6).',
+   body:'Spend to activate abilities, power attacks, help allies (give +1d6 to another\'s roll), or use features that cost Hope.'},
+  {id:'r-gain-fear',cat:'Hope & Fear',name:'Gaining Fear',
+   summary:'GM gains 1 Fear when a PC rolls with Fear.',
+   body:'GM gains 1 Fear when a PC rolls with Fear. Stored in the Fear pool.'},
+  {id:'r-spend-fear',cat:'Hope & Fear',name:'Spending Fear',
+   summary:'GM makes moves, activates adversary abilities, or causes complications.',
+   body:'GM spends Fear to make GM moves (including Fear Feature adversary moves), activate adversary abilities, or introduce complications.'},
+  {id:'r-fear-pool',cat:'Hope & Fear',name:'Fear Pool',
+   summary:'GM keeps Fear in reserve for interruptions.',
+   body:'GM keeps Fear in reserve; recommended to keep some in reserve, especially in combat, to interrupt scenes.'},
+  // ── Attack & Defense ──
+  {id:'r-atk-roll',cat:'Attack & Defense',name:'Attack Roll',
+   summary:'Action Roll using weapon\'s trait vs. adversary\'s Difficulty.',
+   body:'Make an Action Roll using the weapon\'s trait vs. the adversary\'s Difficulty. On success, deal damage.'},
+  {id:'r-adv-dc',cat:'Attack & Defense',name:'Adversary Difficulty',
+   summary:'Adversaries use listed Difficulty, not Evasion.',
+   body:'Adversaries do not have Evasion; players roll against their listed Difficulty number.'},
+  {id:'r-evasion',cat:'Attack & Defense',name:'Evasion',
+   summary:'PC passive defense. Adversaries roll d20 + mod vs. Evasion.',
+   body:'PC passive defense score. Adversaries roll a d20 + modifier vs. a PC\'s Evasion to hit. Critical hit if roll equals or exceeds Evasion by 10+.'},
+  {id:'r-unarmed',cat:'Attack & Defense',name:'Unarmed Attack',
+   summary:'Roll Finesse or Strength. Damage = 1d6+1 phy.',
+   body:'Roll Finesse or Strength (player\'s choice). Damage = 1d6+1 phy. No features.'},
+  {id:'r-damage',cat:'Attack & Defense',name:'Damage',
+   summary:'Roll weapon dice (count = Proficiency) + flat bonus.',
+   body:'On a successful attack, roll the weapon\'s damage dice (number of dice = Proficiency) and add the flat bonus.'},
+  {id:'r-proficiency',cat:'Attack & Defense',name:'Proficiency',
+   summary:'Starts at 1; number of damage dice rolled on an attack.',
+   body:'Starts at 1; number of damage dice rolled on an attack. Increases at certain advancement options.'},
+  {id:'r-dmg-types',cat:'Attack & Defense',name:'Damage Types',
+   summary:'Physical (phy) and Magic (mag).',
+   body:'Physical (phy) and Magic (mag). Some adversaries have resistance or immunity to one type.'},
+  // ── Damage & HP ──
+  {id:'r-hp',cat:'Damage & HP',name:'Hit Points',
+   summary:'Characters have limited HP slots; mark when taking damage.',
+   body:'Characters have a limited number of HP slots. Mark them when taking damage.'},
+  {id:'r-thresholds',cat:'Damage & HP',name:'Damage Thresholds',
+   summary:'Minor: 1 HP. Major: 2 HP. Severe: 3 HP. Below minor: nothing.',
+   body:'Minor threshold: marks 1 HP. Major threshold: marks 2 HP. Severe threshold: marks 3 HP. Damage below the Minor threshold = no HP marked.'},
+  {id:'r-armor-mark',cat:'Damage & HP',name:'Marking Armor',
+   summary:'Mark 1 Armor Slot to reduce damage severity by one tier.',
+   body:'Before marking an HP, mark 1 Armor Slot instead to reduce damage severity by one tier (Severe → Major → Minor → Nothing). Each attack allows only 1 Armor Slot marked.'},
+  {id:'r-armor-score',cat:'Damage & HP',name:'Armor Score',
+   summary:'Max armor slots. Cannot exceed 12.',
+   body:'Max armor slots available. Cannot exceed 12. After all slots marked, armor unusable until repaired during downtime.'},
+  {id:'r-tier-thresholds',cat:'Damage & HP',name:'Thresholds by Tier',
+   summary:'T1: 5/11. T2: 7/16. T3: 11/22. T4: 15/30 (approximate).',
+   body:'Adversaries scale: T1: Minor 5, Major 11; T2: Minor 7, Major 16; T3: Minor 11, Major 22; T4: Minor 15, Major 30 (approximate — varies by adversary).'},
+  // ── Conditions ──
+  {id:'r-hidden',cat:'Conditions',name:'Hidden',
+   summary:'Any rolls against this target have disadvantage.',
+   body:'Any rolls against this target have disadvantage. Cleared when: the adversary moves into line of sight of a foe, makes an attack, or a foe moves to where they can see them.'},
+  {id:'r-restrained',cat:'Conditions',name:'Restrained',
+   summary:'Target cannot move until this condition is cleared.',
+   body:'Target cannot move until this condition is cleared, but can still take actions from their current position.'},
+  {id:'r-vulnerable',cat:'Conditions',name:'Vulnerable',
+   summary:'All rolls targeting this creature have advantage.',
+   body:'While a creature is Vulnerable, all rolls targeting them have advantage.'},
+  // ── Stress ──
+  {id:'r-stress-mark',cat:'Stress',name:'Marking Stress',
+   summary:'Failed rolls, adversary abilities, narrative consequences.',
+   body:'Players mark Stress in response to failed rolls, certain adversary abilities, and narrative consequences. Stress slots are limited.'},
+  {id:'r-stress-full',cat:'Stress',name:'Full Stress',
+   summary:'PC becomes Vulnerable when Stress track is full.',
+   body:'When a PC\'s Stress track is full, they become Vulnerable.'},
+  {id:'r-stress-clear',cat:'Stress',name:'Clearing Stress',
+   summary:'Some abilities clear Stress. Short Rest clears all.',
+   body:'Some abilities clear Stress. Short Rest clears all Stress (and repairs armor). Long Rest also clears Stress, plus clears all Hit Points and removes Vulnerable condition.'},
+  // ── Countdowns ──
+  {id:'r-countdown',cat:'Countdowns',name:'Standard Countdown',
+   summary:'Die ticking down by 1 per trigger. At 0, consequence fires.',
+   body:'A die (d4, d6, d8, d10) that ticks down by 1 each time its trigger occurs. When it hits 0, the consequence triggers.'},
+  {id:'r-progress',cat:'Countdowns',name:'Progress Countdown',
+   summary:'Ticks toward a goal on successes. For long-term tasks.',
+   body:'Ticks down toward a goal. Ticks on successes or certain conditions. Used for long-term tasks, environmental changes, or campaign events.'},
+  {id:'r-looping',cat:'Countdowns',name:'Looping Countdown',
+   summary:'When it hits 0, it triggers and resets.',
+   body:'When it hits 0, it triggers and resets to its starting value.'},
+  {id:'r-dyn-countdown',cat:'Countdowns',name:'Dynamic Advancement',
+   summary:'Crit: 3 ticks. Hope: 2 ticks. Fear: 1 tick. Failure: 0.',
+   body:'Critical success: 3 ticks. Success with Hope: 2 ticks. Success with Fear: 1 tick. Failure: 0 ticks (or 1 tick on GM\'s discretion for project work).'},
+  // ── Ranges ──
+  {id:'r-melee',cat:'Ranges',name:'Melee',summary:'Within arm\'s reach.',body:'Within arm\'s reach (same square/zone).'},
+  {id:'r-vclose',cat:'Ranges',name:'Very Close',summary:'Just a few steps away.',body:'Just a few steps away.'},
+  {id:'r-close',cat:'Ranges',name:'Close',summary:'Across a small room.',body:'Across a small room.'},
+  {id:'r-far',cat:'Ranges',name:'Far',summary:'Across a large room or open space.',body:'Across a large room or open space.'},
+  {id:'r-vfar',cat:'Ranges',name:'Very Far',summary:'At the limit of sight/effective range.',body:'At the limit of sight/effective range.'},
+  {id:'r-movement',cat:'Ranges',name:'Movement',summary:'Free move to Close range on your turn.',body:'On their turn, a character can move freely to Close range from their current position without spending an action.'},
+  // ── Downtime ──
+  {id:'r-short-rest',cat:'Downtime',name:'Short Rest',
+   summary:'Clear all Stress, repair armor. GM gains 1d4 Fear.',
+   body:'Clear all Stress, repair armor (clear all marked Armor Slots). Takes time in the fiction (1+ hours). GM gains 1d4 Fear.'},
+  {id:'r-long-rest',cat:'Downtime',name:'Long Rest',
+   summary:'Clear Stress, HP, armor, Vulnerable. GM gains Fear = PCs + 1d4.',
+   body:'Clear all Stress, all Hit Points, all marked Armor Slots. Remove Vulnerable condition. Takes a significant in-fiction rest (overnight or equivalent). GM gains Fear = (number of PCs + 1d4) and advances a long-term countdown.'},
+  {id:'r-downtime-moves',cat:'Downtime',name:'Downtime Moves',
+   summary:'Good Night\'s Rest, Repair, Prepare, Work on a Project, etc.',
+   body:'Get a Good Night\'s Rest (clear stress/HP), Repair Your Equipment (restore armor slots and item features), Prepare (gain advantage on next related roll), Work on a Project (tick a progress countdown), or others as described in class features.'},
+  // ── Death ──
+  {id:'r-death-move',cat:'Death',name:'Death Move',
+   summary:'When last HP marked: Blaze of Glory / Avoid Death / Risk It All.',
+   body:'When a PC marks their last Hit Point, they must immediately choose: Blaze of Glory (heroic death, critical-success action), Avoid Death (unconscious until healed; roll at next long rest for Scar), or Risk It All (roll Duality Dice — Hope higher: clear HP/Stress equal to Hope die; Fear higher: cross through death; Equal: clear all HP and Stress).'},
+  {id:'r-scars',cat:'Death',name:'Scars',
+   summary:'Cross out a Hope slot permanently. Retire if last slot lost.',
+   body:'Cross out a Hope slot permanently. Can be narratively healed as a downtime project reward. If last Hope slot crossed out, retire the character.'},
+  // ── GM Moves ──
+  {id:'r-when-move',cat:'GM Moves',name:'When to Make a Move',
+   summary:'After a roll with Fear, after a failed roll, or when fiction demands.',
+   body:'After a roll with Fear, after a failed roll, or when the fiction demands it.'},
+  {id:'r-soft-move',cat:'GM Moves',name:'Soft Move',
+   summary:'Foreshadows consequence; players can react first.',
+   body:'Foreshadows a consequence; players can react before it fully hits.'},
+  {id:'r-hard-move',cat:'GM Moves',name:'Hard Move',
+   summary:'Consequence lands immediately and fully.',
+   body:'A consequence lands immediately and fully.'},
+  {id:'r-common-moves',cat:'GM Moves',name:'Common GM Moves',
+   summary:'Put in danger, use feature, introduce adversary, tick countdown…',
+   body:'Put a PC in danger, have an adversary use a feature, activate an environment feature, introduce a new adversary, tick a countdown, use Fear to activate an adversary\'s Fear Feature, make a GM NPC act.'},
+  // ── Adversaries ──
+  {id:'r-adv-atk',cat:'Adversaries',name:'Adversary Attack',
+   summary:'Roll d20 + mod vs. PC Evasion. Hit if meets or exceeds.',
+   body:'Roll d20 + modifier vs. PC\'s Evasion. Hit if result meets or exceeds Evasion.'},
+  {id:'r-adv-hp',cat:'Adversaries',name:'Adversary HP',
+   summary:'Mark HP slots. When all marked and hit again: Defeated.',
+   body:'Adversaries track HP slots. When all HP slots are marked and they take additional damage: Severely Damaged adversaries are Defeated.'},
+  {id:'r-adv-types',cat:'Adversaries',name:'Adversary Types',
+   summary:'Mook, Standard, Bruiser, Solo, Skulk, Leader, Social.',
+   body:'Mooks: 1-3 HP, group well. Standard: 3-5+ HP. Bruisers: high HP, hard hitting, fewer abilities. Solos: designed for 1-vs-party, multiple activations. Skulks: low HP, Hidden, hit hard then vanish. Leaders: boost allies. Social: uses Stress as HP for social conflicts.'},
+  {id:'r-defeated',cat:'Adversaries',name:'Defeated Adversaries',
+   summary:'GM chooses: flee, surrender, or die. Not automatic death.',
+   body:'GM chooses: flee, surrender, or die. They don\'t automatically die.'},
+  // ── Social Conflict ──
+  {id:'r-social',cat:'Social Conflict',name:'Influencing NPCs',
+   summary:'Minor requests: one success. Major: fill adversary Stress track.',
+   body:'One successful action roll may be enough for minor requests. Major requests or hostile NPCs may require filling their Stress track.'},
+  {id:'r-social-stress',cat:'Social Conflict',name:'Adversary Stress (Social)',
+   summary:'Stress slots = influence meter. Full = Vulnerable.',
+   body:'Use adversary Stress slots as the influence meter. Each successful social action causes them to mark Stress. Vulnerable when full; defeated (convinced) if hit while Vulnerable.'},
+  // ── Optional Rules ──
+  {id:'r-falling',cat:'Optional Rules',name:'Falling Damage',
+   summary:'Very Close: 1d10+3. Close: 1d20+5. Far+: 1d100+15 or death.',
+   body:'Very Close range: 1d10+3 phy. Close range: 1d20+5 phy. Far/Very Far: 1d100+15 phy or death (GM\'s discretion). Collision: 1d20+5 direct physical.'},
+  {id:'r-underwater',cat:'Optional Rules',name:'Underwater Combat',
+   summary:'Disadvantage unless suited. Countdown for breath.',
+   body:'Attack rolls have disadvantage unless the creature is suited for underwater combat. For breath: countdown (d4 or higher), ticks down when PCs take actions or fail rolls. When it ends, mark a Stress each time they take an action.'},
+  {id:'r-pc-conflict',cat:'Optional Rules',name:'PC vs PC Conflict',
+   summary:'Attacker rolls vs. Evasion or reaction roll Difficulty.',
+   body:'On attack roll, attacker rolls vs. defender\'s Evasion. On other conflicts, instigator rolls an action roll vs. Difficulty = total value of the target\'s reaction roll.'},
+  // ── Equipment ──
+  {id:'r-weapons',cat:'Equipment',name:'Primary Weapons',
+   summary:'One equipped. Trait, Range, Damage Die, Burden, Feature.',
+   body:'One equipped at a time. Listed by Trait, Range, Damage Die, Burden, Feature. Roll number of damage dice = Proficiency.'},
+  {id:'r-secondary',cat:'Equipment',name:'Secondary Weapons',
+   summary:'Augment primary. Shields, daggers. Can\'t use with two-handed primary.',
+   body:'Augment primary. Shields, daggers, etc. One equipped at a time. Two-handed primary = cannot equip secondary.'},
+  {id:'r-switching',cat:'Equipment',name:'Switching Weapons in Danger',
+   summary:'Mark a Stress to equip an Inventory Weapon.',
+   body:'Mark a Stress to equip an Inventory Weapon. Free in calm situations.'},
+  {id:'r-unarmored',cat:'Equipment',name:'Unarmored',
+   summary:'Armor Score 0. Major = level. Severe = 2 × level.',
+   body:'Armor Score 0, Major threshold = character level, Severe threshold = 2 × character level.'},
+  {id:'r-throwing',cat:'Equipment',name:'Throwing a Weapon',
+   summary:'Throwable weapons to Very Close using Finesse. You lose it until retrieved.',
+   body:'Throwable weapons (dagger, axe) can be thrown to Very Close range using Finesse. Deal normal damage on success. You lose the weapon until retrieved.'},
+  // ── Leveling Up ──
+  {id:'r-tiers',cat:'Leveling Up',name:'Tiers of Play',
+   summary:'T1: L1. T2: L2-4. T3: L5-7. T4: L8-10.',
+   body:'Tier 1 (level 1), Tier 2 (levels 2-4), Tier 3 (levels 5-7), Tier 4 (levels 8-10).'},
+  {id:'r-advancements',cat:'Leveling Up',name:'Advancements',
+   summary:'Choose 2 per level: +trait, +HP, +Stress, +Exp, domain card, +Evasion, +Prof, Multiclass.',
+   body:'Choose 2 per level up: +1 to two unmarked traits (mark them), +1 HP slot, +1 Stress slot, +1 to two Experiences, domain card (your level or lower), +1 Evasion, +1 Proficiency (mark both slots first), Multiclass (level 5+).'},
+  {id:'r-achievements',cat:'Leveling Up',name:'Level Achievements',
+   summary:'At L2, L5, L8: +1 Exp at +2, +1 Proficiency, clear trait marks.',
+   body:'At levels 2, 5, and 8: +1 Experience at +2, +1 Proficiency, clear trait marks (at 5 and 8).'},
+];
+
+var _rulesRendered=false;
+var _rulesFilter={search:'',cat:'All'};
+var _ruleEditId=null;
+
+function renderRulesTab(){
+  _rulesRendered=true;
+  var el=document.getElementById('tkp-rules');
+  if(!el)return;
+  el.innerHTML=
+    '<div class="rules-search"><input class="rules-search-input" placeholder="Search rules\u2026" oninput="filterRules(this.value)" id="rules-search-input"></div>'
+   +'<div class="rules-cats" id="rules-cats"></div>'
+   +'<div class="rules-list" id="rules-list"></div>';
+  renderRulesCats();
+  renderRulesList();
+}
+
+function renderRulesCats(){
+  var el=document.getElementById('rules-cats');if(!el)return;
+  var cats=['All'].concat(
+    RULES.filter(function(r){return !r._custom;})
+         .map(function(r){return r.cat;})
+         .filter(function(c,i,a){return a.indexOf(c)===i;})
+  );
+  el.innerHTML=cats.map(function(c){
+    return '<button class="rules-cat-pill'+(c===_rulesFilter.cat?' active':'')+'" onclick="setRulesCat(\''+escH(c)+'\')">'+escH(c)+'</button>';
+  }).join('');
+}
+
+function setRulesCat(cat){_rulesFilter.cat=cat;renderRulesCats();renderRulesList();}
+
+function filterRules(val){_rulesFilter.search=val.toLowerCase();renderRulesList();}
+
+function renderRulesList(){
+  var el=document.getElementById('rules-list');if(!el)return;
+  db_getAll('toolkit_notes').then(function(notes){
+    var customRules=(notes||[]).filter(function(n){return n._rule;});
+    var all=RULES.concat(customRules);
+    var filtered=all.filter(function(r){
+      var catMatch=_rulesFilter.cat==='All'||r.cat===_rulesFilter.cat;
+      var q=_rulesFilter.search;
+      var textMatch=!q||(r.name.toLowerCase().includes(q)||r.body.toLowerCase().includes(q)||r.summary.toLowerCase().includes(q));
+      return catMatch&&textMatch;
+    });
+    if(!filtered.length){el.innerHTML='<div style="padding:12px;font-size:13px;color:var(--text-muted)">No rules match.</div>';_appendRulesForm(el);return;}
+    el.innerHTML=filtered.map(function(r){
+      var customControls=r._rule?'<button class="rule-edit-btn" data-ruleedit="'+escH(r.id)+'">&#x270E;</button><button class="rule-del-btn" data-ruledel="'+escH(r.id)+'">&times;</button>':'';
+      return '<div class="rule-card'+(r._rule?' custom':'')+'"><div class="rule-card-header" onclick="toggleRuleCard(\''+escH(r.id)+'\')">'
+        +'<span class="rule-card-name">'+escH(r.name)+'</span>'
+        +'<span class="rule-card-summary">'+escH(r.summary)+'</span>'
+        +customControls
+        +'<span class="rule-card-chevron" id="rchev-'+escH(r.id)+'">&#x25BC;</span>'
+        +'</div>'
+        +'<div class="rule-card-body" id="rbody-'+escH(r.id)+'">'+escH(r.body)+'</div>'
+        +'</div>';
+    }).join('');
+    _appendRulesForm(el);
+  }).catch(function(){
+    el.innerHTML='<div style="padding:12px;font-size:13px;color:var(--text-muted)">Could not load rules.</div>';
+  });
+}
+
+function _appendRulesForm(el){
+  el.innerHTML+='<button class="rules-add-btn" onclick="toggleRulesForm()">&#xFF0B; Add Custom Rule</button>'
+    +'<div class="rules-inline-form" id="rules-add-form">'
+    +'<input class="rif-input" id="rif-name" placeholder="Rule name"><input class="rif-input" id="rif-cat" placeholder="Category (e.g. Combat)">'
+    +'<input class="rif-input" id="rif-summary" placeholder="One-line summary">'
+    +'<textarea class="rif-textarea" id="rif-body" placeholder="Full rule text\u2026"></textarea>'
+    +'<div class="rif-actions"><button class="rif-save" onclick="saveCustomRule()">Save</button><button class="rif-cancel" onclick="toggleRulesForm()">Cancel</button></div>'
+    +'</div>';
+}
+
+function toggleRuleCard(id){
+  var body=document.getElementById('rbody-'+id);
+  var chev=document.getElementById('rchev-'+id);
+  if(!body)return;
+  body.classList.toggle('open');
+  if(chev)chev.textContent=body.classList.contains('open')?'\u25B2':'\u25BC';
+}
+function toggleRulesForm(){
+  document.getElementById('rules-add-form').classList.toggle('open');
+}
+
+function saveCustomRule(){
+  var name=document.getElementById('rif-name').value.trim();
+  var cat=document.getElementById('rif-cat').value.trim()||'Custom';
+  var summary=document.getElementById('rif-summary').value.trim();
+  var body=document.getElementById('rif-body').value.trim();
+  if(!name||!body){showToast('Name and rule text are required.');return;}
+  var rec={
+    id:_ruleEditId||('rule_'+Date.now()),
+    _rule:true,
+    cat:cat,name:name,summary:summary,body:body,createdAt:new Date().toISOString()
+  };
+  db_put('toolkit_notes',rec).then(function(){
+    showToast(_ruleEditId?'Rule updated.':'Rule saved.');
+    _ruleEditId=null;
+    ['rif-name','rif-cat','rif-summary','rif-body'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('rules-add-form').classList.remove('open');
+    renderRulesList();
+  });
+}
+
+function deleteCustomRule(id){
+  if(!confirm('Delete this rule?'))return;
+  db_delete('toolkit_notes',id).then(function(){showToast('Rule deleted.');renderRulesList();});
+}
+
+// Event delegation for rule edit/delete
+document.addEventListener('click',function(e){
+  var editBtn=e.target.closest('[data-ruleedit]');
+  if(editBtn){
+    db_get('toolkit_notes',editBtn.dataset.ruleedit).then(function(rec){
+      if(!rec)return;
+      _ruleEditId=rec.id;
+      var form=document.getElementById('rules-add-form');
+      if(!form)return;
+      document.getElementById('rif-name').value=rec.name||'';
+      document.getElementById('rif-cat').value=rec.cat||'';
+      document.getElementById('rif-summary').value=rec.summary||'';
+      document.getElementById('rif-body').value=rec.body||'';
+      form.classList.add('open');
+      form.scrollIntoView({behavior:'smooth'});
+    });
+    return;
+  }
+  var delBtn=e.target.closest('[data-ruledel]');
+  if(delBtn){deleteCustomRule(delBtn.dataset.ruledel);return;}
+});
+
 // §INIT
 // ── Init ──────────────────────────────────────────────────
 loadCustomAdv();
