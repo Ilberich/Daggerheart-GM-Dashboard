@@ -60,6 +60,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 }
 .tab-close:hover{background:rgba(224,90,106,.2);color:var(--fear);}
 
+/* Wrapper containers must be transparent to the flex layout */
+#battle-tabs,#dynamic-tabs{display:contents;}
+
 /* New battle button */
 #new-battle-btn{
   display:flex;align-items:center;padding:0 10px;height:100%;
