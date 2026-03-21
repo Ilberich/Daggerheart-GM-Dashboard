@@ -888,6 +888,12 @@ document.addEventListener('click',function(e){
   }
   var pinNameBtn=e.target.closest('[data-pinname]');
   if(pinNameBtn){pinToNotes('npc',pinNameBtn.dataset.pinname,'');showToast('Pinned as NPC.');return;}
+  var pinLootBtn=e.target.closest('[data-pinloot]');
+  if(pinLootBtn){
+    pinToNotes('loot','Loot — T'+pinLootBtn.dataset.pintier,pinLootBtn.dataset.pinloot);
+    showToast('Pinned.');
+    return;
+  }
 });
 
 function toggleAbilitiesById(id,btn){
@@ -1509,9 +1515,94 @@ function toggleGenSection(id){
   if(chev)chev.textContent=body.classList.contains('open')?'▲':'▼';
 }
 
-// Stub — replaced by full implementation in Task 5
-function _rollDice(expr){return 1;}
-function rollLoot(){showToast('Loot roller coming soon.');}
+var LOOT_TABLES={
+  1:[
+    'Handful of gold (1d6 × 5 gp)',
+    'Healing potion (clear 1 HP)',
+    'Bundle of torches (8)',
+    'Hempen rope (50 ft)',
+    'Rations (1 week)',
+    'Thieves\' tools (worn)',
+    'Strange carved bone token',
+    'Vial of antitoxin',
+    'Traveler\'s cloak (stained)',
+    'Lucky rabbit\'s foot (+1 to one roll, once)',
+    'Cracked lantern (still works)',
+    'Bag of caltrops (20)'
+  ],
+  2:[
+    'Pouch of gold (2d6 × 10 gp)',
+    'Improved healing tonic (clear 2 HP)',
+    'Enchanted arrow quiver (1d8 arrows)',
+    'Whetstone of sharpness (weapon +1 dmg for 1 encounter)',
+    'Spy glass (collapsible)',
+    'Map of a nearby dungeon (partially accurate)',
+    'Vial of alchemist\'s fire',
+    'Silver-tipped crossbow bolts (10)',
+    'Finely crafted leather gloves',
+    'Potion of feather falling',
+    'Set of loaded dice (weighted)',
+    'Signet ring (minor noble family)'
+  ],
+  3:[
+    'Gold ingot (3d6 × 25 gp)',
+    'Rare healing elixir (clear all HP)',
+    'Enchanted weapon component (upgrade one weapon)',
+    'Scroll of a Tier 2 spell',
+    'Cloak of elvenkind (advantage on Stealth)',
+    'Portable hole (2 ft diameter)',
+    'Vial of dragon bile (1d12+4 mag, single use)',
+    'Ring of feather falling (permanent)',
+    'Masterwork artisan\'s tools',
+    'Ancient coin hoard (worth 300 gp to a collector)',
+    'Bottled storm (thunderclap, 30 ft, once)',
+    'Spellbook (3 Tier 1-2 spells, incomplete)'
+  ],
+  4:[
+    'Legendary artifact fragment (GM-defined effect)',
+    'Chest of gold (4d6 × 100 gp)',
+    'Divine relic (radiant aura, specific worship)',
+    'Crystal of true sight (1 use)',
+    'Sword of ancient kings (+2, fear aura once per day)',
+    'Tome of forbidden knowledge (+1 trait, costs a Scar)',
+    'Bottled deity whisper (advantage on one action, lasts 1 session)',
+    'Staff of the ley line (recharge one spell slot)',
+    'Phylactery of a lich (very dangerous, very valuable)',
+    'Plane-touched ore (craft one legendary item)',
+    'Mantle of the astral traveler',
+    'Crown fragment of a fallen empire'
+  ]
+};
+
+function _rollDice(expr){
+  var m=expr.match(/^(\d+)d(\d+)$/);
+  if(m){
+    var n=parseInt(m[1]),d=parseInt(m[2]),t=0;
+    for(var i=0;i<n;i++)t+=Math.floor(Math.random()*d)+1;
+    return t;
+  }
+  return parseInt(expr)||1;
+}
+
+function rollLoot(){
+  var tierEl=document.getElementById('loot-tier');
+  var qtyEl=document.getElementById('loot-qty');
+  if(!tierEl||!qtyEl)return;
+  var tier=parseInt(tierEl.value)||1;
+  var qtyExpr=qtyEl.value;
+  var count=_rollDice(qtyExpr);
+  var table=LOOT_TABLES[tier]||LOOT_TABLES[1];
+  var shuffled=table.slice().sort(function(){return Math.random()-.5;});
+  var items=shuffled.slice(0,Math.min(count,table.length));
+  var el=document.getElementById('loot-results');if(!el)return;
+  var allText=items.join('\n');
+  el.innerHTML=items.map(function(item){
+    return '<div class="gen-result-row">'
+      +'<span class="gen-result-name" style="font-size:12px">'+escH(item)+'</span>'
+      +'<button class="gen-pin-btn" data-pinloot="'+escH(allText)+'" data-pintier="'+escH(String(tier))+'">Pin</button>'
+      +'</div>';
+  }).join('');
+}
 
 // §INIT
 // ── Init ──────────────────────────────────────────────────
