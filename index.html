@@ -9,8 +9,10 @@
 <title>The Mother Tree — GM Interface</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<!-- All dependencies are local — no internet required.
-     Fonts: Crimson Pro → Georgia → serif | Cinzel → serif | JetBrains Mono → monospace (fallbacks already in CSS) -->
+<!-- Fonts: loaded from Google Fonts when online; fallback to Georgia/serif offline -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap">
 <script src="vendor/marked-compat.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
