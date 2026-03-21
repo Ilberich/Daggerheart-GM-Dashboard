@@ -1578,6 +1578,7 @@ function _rollDice(expr){
   var m=expr.match(/^(\d+)d(\d+)$/);
   if(m){
     var n=parseInt(m[1]),d=parseInt(m[2]),t=0;
+    if(n<1||d<1)return 1;
     for(var i=0;i<n;i++)t+=Math.floor(Math.random()*d)+1;
     return t;
   }
