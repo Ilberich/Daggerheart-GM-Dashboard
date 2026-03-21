@@ -1100,7 +1100,7 @@ function renderAllTabs(){
       tab.className='tab'+(activeTab===entry.id?' active':'');
       tab.dataset.tab=entry.id;
       tab.innerHTML='<span class="tab-icon">'+escH(entry.icon)+'</span>'
-        +'<span class="tab-title" title="'+escH(entry.title)+'">'+escH(entry.title)+'</span>'
+        +'<span class="tab-title" ondblclick="renameLoreTab(\''+entry.id+'\');event.stopPropagation()" title="Double-click to rename">'+escH(entry.title)+'</span>'
         +'<button class="tab-close" onclick="closeTab(\''+entry.id+'\',event)">×</button>';
       tab.addEventListener('click',function(){switchTab(entry.id);});
     }
@@ -1231,6 +1231,19 @@ function renameBattle(id){
 function commitBattleRename(id,inp){
   const b=battles.find(x=>x.id===id);if(!b)return;
   if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)b.name=v;}
+  renderAllTabs();saveSession();
+}
+
+function renameLoreTab(id){
+  const entry=tabOrder.find(x=>x.type==='lore'&&x.id===id);if(!entry)return;
+  const span=document.querySelector(`[data-tab="${id}"] .tab-title`);if(!span)return;
+  span.innerHTML=`<input class="inline-edit" value="${escH(entry.title)}" style="width:80px" onblur="commitLoreTabRename('${id}',this)" onkeydown="inlineKey(event,this)">`;
+  span.querySelector('input').select();
+}
+
+function commitLoreTabRename(id,inp){
+  const entry=tabOrder.find(x=>x.type==='lore'&&x.id===id);if(!entry)return;
+  if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)entry.title=v;}
   renderAllTabs();saveSession();
 }
 
