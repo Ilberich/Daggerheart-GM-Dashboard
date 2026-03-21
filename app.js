@@ -1037,16 +1037,31 @@ db_migrate().then(function(){
   console.error('init error:',e);
   // Fallback: run init synchronously if async chain fails
   try{loadCustomAdv();}catch(ex){}
-  loadSession();
-  if(battles.length===0){
-    battleTabCounter=1;
-    var b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
-    battles.push(b);
-    activeBattleId='battle-1';
-    tabOrder=[{type:'battle',id:'battle-1'}];
-    renderAllTabs();
-  }
-  updateBP();buildFilters();renderList();
-  if(battleStarted){renderCombat();}else{renderStage();}
-  statusBar();
+  loadSession().then(function(){
+    if(battles.length===0){
+      battleTabCounter=1;
+      var b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
+      battles.push(b);
+      activeBattleId='battle-1';
+      tabOrder=[{type:'battle',id:'battle-1'}];
+      renderAllTabs();
+    }
+    updateBP();buildFilters();renderList();
+    if(battleStarted){renderCombat();}else{renderStage();}
+    statusBar();
+    if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}
+  }).catch(function(){
+    if(battles.length===0){
+      battleTabCounter=1;
+      var b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
+      battles.push(b);
+      activeBattleId='battle-1';
+      tabOrder=[{type:'battle',id:'battle-1'}];
+      renderAllTabs();
+    }
+    updateBP();buildFilters();renderList();
+    if(battleStarted){renderCombat();}else{renderStage();}
+    statusBar();
+    if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}
+  });
 });
