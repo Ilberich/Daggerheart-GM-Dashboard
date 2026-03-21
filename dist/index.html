@@ -314,6 +314,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 }
 .tab-close:hover{background:rgba(224,90,106,.2);color:var(--fear);}
 
+/* New battle button */
+#new-battle-btn{
+  display:flex;align-items:center;padding:0 10px;height:100%;
+  background:transparent;border:none;border-right:1px solid var(--border);
+  color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;
+  transition:color .15s,background .15s;flex-shrink:0;white-space:nowrap;
+  font-family:'Crimson Pro',serif;
+}
+#new-battle-btn:hover{color:var(--hope);background:rgba(99,102,241,.08);}
+
+/* Separator between battle tabs and lore tabs */
+.tab-separator{
+  width:1px;background:var(--border);margin:8px 4px;flex-shrink:0;
+}
+
 /* Upload button */
 #tab-upload{
   display:flex;align-items:center;gap:6px;padding:0 14px;
@@ -864,11 +879,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 
 <!-- TAB BAR -->
 <div id="tabbar">
-  <div class="tab active" data-tab="combat" onclick="switchTab('combat')">
-    <span class="tab-icon">⚔</span>
-    <span class="tab-title">Combat Tracker</span>
-  </div>
-  <!-- Dynamic tabs inserted here -->
+  <!-- Battle tabs rendered here by JS -->
+  <div id="battle-tabs"></div>
+  <button id="new-battle-btn" onclick="newBattle()" title="New battle tab">⚔ +</button>
+  <div class="tab-separator"></div>
+  <!-- Dynamic lore tabs inserted here -->
   <div id="dynamic-tabs"></div>
 
   <label id="tab-upload" title="Upload .md files to open as lore tabs">
@@ -1041,8 +1056,10 @@ let activeTab='combat';
 let tabCounter=0;
 
 function switchTab(id){
+  if(activeTab==='combat')saveBattleState();
   activeTab=id;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`[data-tab="${id}"]`)?.classList.add('active');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));
   saveSession();
 }
@@ -1072,7 +1089,108 @@ function closeTab(id,e){
   document.querySelector(`.tab[data-tab="${id}"]`)?.remove();
   document.getElementById('panel-'+id)?.remove();
   delete tabRawMd[id];
-  if(activeTab===id)switchTab('combat');
+  if(activeTab===id){
+    // Return to the active battle tab
+    activeTab='combat';
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+    renderBattleTabs();
+  }
+  saveSession();
+}
+
+// §BATTLE_TABS ═══════════════════════════════════════════════════════════
+// BATTLE TAB MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function currentBattle(){return battles.find(b=>b.id===activeBattleId);}
+
+function saveBattleState(){
+  const b=currentBattle();if(!b)return;
+  Object.assign(b,{battleStarted,round,playerCount,cart,combatants,iid});
+}
+
+function loadBattleState(b){
+  battleStarted=b.battleStarted;round=b.round;
+  playerCount=b.playerCount;bpTotal=3*playerCount+2;
+  cart=b.cart;combatants=b.combatants;iid=b.iid;
+}
+
+function applyBattleToDOM(){
+  document.getElementById('player-count').value=playerCount;
+  document.getElementById('btn-begin').style.display=battleStarted?'none':'';
+  document.getElementById('btn-reset').style.display=battleStarted?'':'none';
+  document.getElementById('btn-add-more').style.display=battleStarted?'':'none';
+  document.getElementById('round-badge').style.display=battleStarted?'':'none';
+  if(battleStarted)document.getElementById('round-num').textContent=round;
+  syncBP();renderList();
+  if(battleStarted){renderCombat();}else{renderStage();}
+  statusBar();
+}
+
+function renderBattleTabs(){
+  const container=document.getElementById('battle-tabs');if(!container)return;
+  container.innerHTML=battles.map(b=>`<div class="tab${b.id===activeBattleId?' active':''}" data-battletab="${b.id}" onclick="switchBattle('${b.id}')"><span class="tab-icon">⚔</span><span class="tab-title" ondblclick="renameBattle('${b.id}');event.stopPropagation()" title="Double-click to rename">${b.name}</span>${battles.length>1?`<button class="tab-close" onclick="closeBattle('${b.id}',event)">×</button>`:''}</div>`).join('');
+}
+
+function newBattle(){
+  saveBattleState();
+  const num=++battleTabCounter;
+  const id='battle-'+Date.now();
+  const b={id,name:'Battle '+num,battleStarted:false,round:1,playerCount,cart:[],combatants:[],iid:0};
+  battles.push(b);
+  activeBattleId=id;
+  loadBattleState(b);
+  activeTab='combat';
+  document.querySelectorAll('#dynamic-tabs .tab').forEach(t=>t.classList.remove('active'));
+  renderBattleTabs();
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  applyBattleToDOM();
+  saveSession();
+}
+
+function switchBattle(id){
+  saveBattleState();
+  activeBattleId=id;
+  const b=currentBattle();if(!b)return;
+  loadBattleState(b);
+  activeTab='combat';
+  document.querySelectorAll('#dynamic-tabs .tab').forEach(t=>t.classList.remove('active'));
+  renderBattleTabs();
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  applyBattleToDOM();
+  saveSession();
+}
+
+function closeBattle(id,e){
+  e.stopPropagation();
+  if(battles.length<=1)return;
+  const b=battles.find(x=>x.id===id);
+  if(b&&b.battleStarted&&!confirm(`Close "${b.name}"? This battle is in progress.`))return;
+  battles=battles.filter(x=>x.id!==id);
+  if(activeBattleId===id){
+    activeBattleId=battles[battles.length-1].id;
+    loadBattleState(currentBattle());
+    activeTab='combat';
+    document.querySelectorAll('#dynamic-tabs .tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+    renderBattleTabs();
+    applyBattleToDOM();
+  } else {
+    renderBattleTabs();
+  }
+  saveSession();
+}
+
+function renameBattle(id){
+  const b=battles.find(x=>x.id===id);if(!b)return;
+  const span=document.querySelector(`[data-battletab="${id}"] .tab-title`);if(!span)return;
+  span.innerHTML=`<input class="inline-edit" value="${escH(b.name)}" style="width:80px" onblur="commitBattleRename('${id}',this)" onkeydown="inlineKey(event,this)">`;
+  span.querySelector('input').select();
+}
+
+function commitBattleRename(id,inp){
+  const b=battles.find(x=>x.id===id);if(!b)return;
+  if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)b.name=v;}
+  renderBattleTabs();
   saveSession();
 }
 
@@ -1204,6 +1322,8 @@ let expanded=new Set();
 var tabRawMd={};
 var _restoring=false;
 var SESSION_KEY='motherTree_session';
+// Battle tab management
+var battles=[],activeBattleId=null,battleTabCounter=0;
 
 // §BP_SIDEBAR
 function toggleSidebar(){
@@ -1218,7 +1338,9 @@ function openSidebar(){if(!sidebarOpen)toggleSidebar();}
 
 function updateBP(){
   playerCount=parseInt(document.getElementById('player-count').value)||4;
-  bpTotal=3*playerCount+2;syncBP();saveSession();
+  bpTotal=3*playerCount+2;
+  const b=currentBattle();if(b)b.playerCount=playerCount;
+  syncBP();saveSession();
 }
 function syncBP(){
   bpSpent=battleStarted?combatants.reduce((s,c)=>s+COSTS[c.type],0):cart.reduce((s,c)=>s+COSTS[c.type],0);
@@ -1516,6 +1638,7 @@ function deleteCustomAdv(id,e){
 // ═══════════════════════════════════════════════════════════
 function saveSession(){
   if(_restoring)return;
+  saveBattleState(); // sync current globals → active battle object before persisting
   var tabs=[];
   var activeTabIdx=-1;
   var idx=0;
@@ -1528,16 +1651,21 @@ function saveSession(){
     idx++;
   });
   var state={
-    playerCount:playerCount,
-    round:round,
-    battleStarted:battleStarted,
-    iid:iid,
-    cart:cart,
-    combatants:combatants,
+    battles:battles,
+    activeBattleId:activeBattleId,
+    battleTabCounter:battleTabCounter,
     activeTabIdx:activeTabIdx,
     tabs:tabs
   };
   try{localStorage.setItem(SESSION_KEY,JSON.stringify(state));}catch(e){}
+}
+
+function _restoreCombatant(c){
+  return Object.assign({},c,{
+    hp_m:Array.isArray(c.hp_m)?c.hp_m:new Array(c.hp).fill(false),
+    st_m:Array.isArray(c.st_m)?c.st_m:new Array(c.st).fill(false),
+    activeStatuses:Array.isArray(c.activeStatuses)?c.activeStatuses:[]
+  });
 }
 
 function loadSession(){
@@ -1546,31 +1674,48 @@ function loadSession(){
     var raw=localStorage.getItem(SESSION_KEY);
     if(!raw){_restoring=false;return;}
     var state=JSON.parse(raw);
-    if(state.playerCount){
-      playerCount=state.playerCount;
-      document.getElementById('player-count').value=playerCount;
-      bpTotal=3*playerCount+2;
-    }
-    if(state.iid)iid=state.iid;
-    if(!state.battleStarted&&state.cart&&state.cart.length){
-      cart=state.cart;
-    }
-    if(state.battleStarted){
-      round=state.round||1;
-      battleStarted=true;
-      combatants=(state.combatants||[]).map(function(c){
-        return Object.assign({},c,{
-          hp_m:Array.isArray(c.hp_m)?c.hp_m:new Array(c.hp).fill(false),
-          st_m:Array.isArray(c.st_m)?c.st_m:new Array(c.st).fill(false),
-          activeStatuses:Array.isArray(c.activeStatuses)?c.activeStatuses:[]
-        });
+
+    if(state.battles&&state.battles.length){
+      // ── New multi-battle format ──
+      battleTabCounter=state.battleTabCounter||state.battles.length;
+      battles=state.battles.map(function(b){
+        return {
+          id:b.id,name:b.name||'Battle 1',
+          battleStarted:!!b.battleStarted,round:b.round||1,
+          playerCount:b.playerCount||4,iid:b.iid||0,
+          cart:b.cart||[],
+          combatants:(b.combatants||[]).map(_restoreCombatant)
+        };
       });
-      document.getElementById('btn-begin').style.display='none';
-      document.getElementById('btn-reset').style.display='';
-      document.getElementById('btn-add-more').style.display='';
-      document.getElementById('round-badge').style.display='';
-      document.getElementById('round-num').textContent=round;
+      activeBattleId=state.activeBattleId||battles[0].id;
+      renderBattleTabs();
+      loadBattleState(currentBattle());
+    } else if(state.playerCount!=null){
+      // ── Legacy single-battle format ──
+      battleTabCounter=1;
+      battles=[{
+        id:'battle-1',name:'Battle 1',
+        battleStarted:!!state.battleStarted,round:state.round||1,
+        playerCount:state.playerCount||4,iid:state.iid||0,
+        cart:state.cart||[],
+        combatants:(state.combatants||[]).map(_restoreCombatant)
+      }];
+      activeBattleId='battle-1';
+      renderBattleTabs();
+      loadBattleState(currentBattle());
     }
+
+    // Apply battle UI state
+    if(battles.length){
+      document.getElementById('player-count').value=playerCount;
+      document.getElementById('btn-begin').style.display=battleStarted?'none':'';
+      document.getElementById('btn-reset').style.display=battleStarted?'':'none';
+      document.getElementById('btn-add-more').style.display=battleStarted?'':'none';
+      document.getElementById('round-badge').style.display=battleStarted?'':'none';
+      if(battleStarted)document.getElementById('round-num').textContent=round;
+    }
+
+    // Restore lore tabs
     if(state.tabs&&state.tabs.length){
       state.tabs.forEach(function(t){
         var html=renderMd(t.rawMd||'',t.title);
@@ -1666,6 +1811,14 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCustomM
 loadCustomAdv();
 (function init(){
   loadSession();
+  // Create the first battle if no session existed
+  if(battles.length===0){
+    battleTabCounter=1;
+    const b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
+    battles.push(b);
+    activeBattleId='battle-1';
+    renderBattleTabs();
+  }
   updateBP();buildFilters();renderList();
   if(battleStarted){renderCombat();}else{renderStage();}
   statusBar();

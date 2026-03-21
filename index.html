@@ -25,11 +25,11 @@
 
 <!-- TAB BAR -->
 <div id="tabbar">
-  <div class="tab active" data-tab="combat" onclick="switchTab('combat')">
-    <span class="tab-icon">⚔</span>
-    <span class="tab-title">Combat Tracker</span>
-  </div>
-  <!-- Dynamic tabs inserted here -->
+  <!-- Battle tabs rendered here by JS -->
+  <div id="battle-tabs"></div>
+  <button id="new-battle-btn" onclick="newBattle()" title="New battle tab">⚔ +</button>
+  <div class="tab-separator"></div>
+  <!-- Dynamic lore tabs inserted here -->
   <div id="dynamic-tabs"></div>
 
   <label id="tab-upload" title="Upload .md files to open as lore tabs">
