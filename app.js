@@ -879,6 +879,15 @@ document.addEventListener('click',function(e){
   }
   var ndel=e.target.closest('[data-ncdel]');
   if(ndel){deleteNoteCard(ndel.dataset.ncdel);return;}
+  var nameStyleBtn=e.target.closest('[data-namestyle]');
+  if(nameStyleBtn){setNameStyle(nameStyleBtn.dataset.namestyle);return;}
+  var copyNameBtn=e.target.closest('[data-copyname]');
+  if(copyNameBtn){
+    navigator.clipboard.writeText(copyNameBtn.dataset.copyname).then(function(){showToast('Copied!');}).catch(function(){showToast('Copy failed.');});
+    return;
+  }
+  var pinNameBtn=e.target.closest('[data-pinname]');
+  if(pinNameBtn){pinToNotes('npc',pinNameBtn.dataset.pinname,'');showToast('Pinned as NPC.');return;}
 });
 
 function toggleAbilitiesById(id,btn){
@@ -1362,6 +1371,142 @@ function deleteNoteCard(id){
 function pinToNotes(type,name,notes){
   _noteEditId=null;
   saveNoteCard({type:type,name:name,notes:notes||''});
+}
+
+// §GENERATORS ════════════════════════════════════════════════════
+// GENERATORS TAB — NPC Names, Loot Roller, Environment Stat Blocks
+// ═════════════════════════════════════════════════════════════════
+
+var NAME_PARTS={
+  northern:{
+    pre:['Bjorn','Ulf','Sig','Hald','Gunnar','Ragnar','Ivar','Leif','Tor','Dag'],
+    mid:['mar','rik','var','ald','bjorn','ulf','hild','grim'],
+    suf:['en','heim','son','sten','gar','dor','ulf','ar']
+  },
+  sylvan:{
+    pre:['Ael','Thal','Syl','Mir','Lith','Fen','Aer','Cal','Elys','Tir'],
+    mid:['ora','ith','an','aria','wen','dor','ael','ian'],
+    suf:['el','ia','wen','ith','ara','or','ael','dan']
+  },
+  dwarven:{
+    pre:['Dor','Brom','Thur','Grim','Kor','Beld','Nor','Mag','Dur','Har'],
+    mid:['gar','dur','bal','nar','gor','bel','und','kar'],
+    suf:['in','ak','dim','ur','ik','on','din','ar']
+  },
+  eastern:{
+    pre:['Kas','Rha','Yev','Tal','Zar','Mir','Shan','Bek','Kira','Jal'],
+    mid:['ara','ini','ous','ira','ani','esh','ali','uri'],
+    suf:['ar','an','os','im','ur','ash','ir','on']
+  },
+  arcane:{
+    pre:['Zar','Vel','Nyx','Aur','Mor','Xan','Vis','Kael','Zer','Lix'],
+    mid:['ith','ael','on','var','ix','eth','ael','or'],
+    suf:['ix','ex','ax','or','is','um','yx','on']
+  },
+  common:{
+    pre:['Mar','Ren','Dal','Cor','Bren','Will','Ash','Tam','Jay','Cole'],
+    mid:['win','ton','ley','wick','ford','brook','dale','wood'],
+    suf:['y','er','on','en','ie','ley','son','wick']
+  }
+};
+
+var _nameStyle='common';
+
+function _genName(style){
+  var parts=NAME_PARTS[style]||NAME_PARTS.common;
+  var roll=Math.random();
+  var pre=parts.pre[Math.floor(Math.random()*parts.pre.length)];
+  var suf=parts.suf[Math.floor(Math.random()*parts.suf.length)];
+  if(roll<0.33){
+    var mid=parts.mid[Math.floor(Math.random()*parts.mid.length)];
+    return pre+mid+suf;
+  } else if(roll<0.66){
+    return pre+suf;
+  } else {
+    var mid2=parts.mid[Math.floor(Math.random()*parts.mid.length)];
+    return pre+mid2;
+  }
+}
+
+function generateNames(){
+  var names=[];
+  for(var i=0;i<5;i++){
+    var n=_genName(_nameStyle);
+    n=n.charAt(0).toUpperCase()+n.slice(1).toLowerCase();
+    names.push(n);
+  }
+  var el=document.getElementById('name-gen-results');if(!el)return;
+  el.innerHTML=names.map(function(n){
+    return '<div class="gen-result-row">'
+      +'<span class="gen-result-name">'+escH(n)+'</span>'
+      +'<button class="gen-copy-btn" data-copyname="'+escH(n)+'">Copy</button>'
+      +'<button class="gen-pin-btn" data-pinname="'+escH(n)+'">Pin</button>'
+      +'</div>';
+  }).join('');
+}
+
+var _genRendered=false;
+
+function renderGeneratorsTab(){
+  _genRendered=true;
+  var el=document.getElementById('tkp-gen');if(!el)return;
+  el.innerHTML=
+    '<div class="gen-section">'
+    +'<div class="gen-section-header" onclick="toggleGenSection(\'gen-names\')">'
+    +'<span class="gen-section-title">👤 NPC Name Generator</span><span id="gchev-names">▼</span>'
+    +'</div>'
+    +'<div class="gen-section-body" id="gen-names">'
+    +'<div class="gen-chips" id="name-style-chips">'
+    +Object.keys(NAME_PARTS).map(function(s){
+      return '<button class="gen-chip'+(s===_nameStyle?' active':'')+'" data-namestyle="'+escH(s)+'">'
+        +s.charAt(0).toUpperCase()+s.slice(1)+'</button>';
+    }).join('')
+    +'</div>'
+    +'<button class="gen-btn" onclick="generateNames()">Generate Names</button>'
+    +'<div class="gen-results" id="name-gen-results"></div>'
+    +'</div></div>'
+    +'<div class="gen-section">'
+    +'<div class="gen-section-header" onclick="toggleGenSection(\'gen-loot\')">'
+    +'<span class="gen-section-title">💰 Loot Roller</span><span id="gchev-loot">▼</span>'
+    +'</div>'
+    +'<div class="gen-section-body" id="gen-loot">'
+    +'<div class="gen-row">'
+    +'<span class="gen-label">Tier:</span>'
+    +'<select class="gen-select" id="loot-tier"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>'
+    +'<span class="gen-label">Qty:</span>'
+    +'<select class="gen-select" id="loot-qty"><option value="1d4">1d4</option><option value="1d6">1d6</option><option value="2">2</option><option value="3">3</option></select>'
+    +'</div>'
+    +'<button class="gen-btn" onclick="rollLoot()">Roll Loot</button>'
+    +'<div class="gen-results" id="loot-results"></div>'
+    +'</div></div>'
+    +'<div class="gen-section">'
+    +'<div class="gen-section-header" onclick="toggleGenSection(\'gen-env\')">'
+    +'<span class="gen-section-title">🌍 Environment Generator</span><span id="gchev-env">▼</span>'
+    +'</div>'
+    +'<div class="gen-section-body" id="gen-env" style="padding:0;">'
+    +'<div id="env-gen-ui"></div>'
+    +'</div></div>'
+    +'<div class="gen-section">'
+    +'<div class="gen-section-header" onclick="toggleGenSection(\'gen-library\')">'
+    +'<span class="gen-section-title">📚 Environment Library</span><span id="gchev-library">▼</span>'
+    +'</div>'
+    +'<div class="gen-section-body" id="gen-library"></div>'
+    +'</div>';
+}
+
+function setNameStyle(style){
+  _nameStyle=style;
+  document.querySelectorAll('#name-style-chips .gen-chip').forEach(function(b){
+    b.classList.toggle('active',b.dataset.namestyle===style);
+  });
+}
+
+function toggleGenSection(id){
+  var body=document.getElementById(id);
+  var chev=document.getElementById('gchev-'+id.replace('gen-',''));
+  if(!body)return;
+  body.classList.toggle('open');
+  if(chev)chev.textContent=body.classList.contains('open')?'▲':'▼';
 }
 
 // §INIT
