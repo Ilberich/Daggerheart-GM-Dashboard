@@ -156,6 +156,22 @@ motives: protect lair, hoard treasure
 
 ---
 
+### 🔲 8. Battle Tabs — Multiple Concurrent Encounters
+Battles become tabs. The GM can prepare multiple encounters in advance and switch between them during a session without losing state.
+
+- [ ] Replace the single permanent `[data-tab="combat"]` tab with a dynamic list of battle tabs
+- [ ] Each battle tab has its own isolated state: `cart`, `combatants`, `round`, `battleStarted`, `playerCount`
+- [ ] `+` button in the tab bar creates a new empty battle tab (auto-named "Battle 1", "Battle 2", etc.)
+- [ ] Battle tabs can be renamed (double-click the tab label)
+- [ ] Battle tabs (except the last remaining one) can be closed — confirm if a battle is in progress
+- [ ] Switching tabs saves the current battle state and restores the target tab's state
+- [ ] Session persistence: save all battle tabs as an array of battle states; restore on reload
+- [ ] BP sidebar and combat controls operate on the currently active battle tab only
+
+**Files:** `index.html` (remove hard-coded combat tab; add `#battle-tabs` container), `app.js` (refactor state globals into `battles[]` array; add `newBattle()`, `switchBattle(id)`, `closeBattle(id)`; update `saveSession()`/`loadSession()`), `styles.css` (battle tab styling, ⚔ icon differentiator)
+
+---
+
 ## Suggested Additions
 
 ### 💡 S2. Session Export / Import
@@ -181,5 +197,6 @@ motives: protect lair, hoard treasure
 | 5 | Browser-style tabs | 🔲 |
 | 6 | Upload Adversary button | 🔲 |
 | 7 | Adversary .MD format + sample file | 🔲 |
+| 8 | Battle tabs — multiple concurrent encounters | 🔲 |
 | S2 | Session export / import | 🔲 |
 | S4 | Adversary search in Arsenal | 🔲 |
