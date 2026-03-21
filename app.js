@@ -874,7 +874,7 @@ function openToolkit(){
   document.getElementById('toolkit-toggle').textContent='›';
   if(window.innerWidth<=768)document.getElementById('toolkit-overlay').classList.add('active');
   else document.body.classList.add('toolkit-open');
-  try{localStorage.setItem('motherTree_toolkitOpen','true');}catch(e){}
+  db_setting('toolkit_open',true).catch(function(){});
 }
 function closeToolkit(){
   _toolkitOpen=false;
@@ -882,7 +882,7 @@ function closeToolkit(){
   document.getElementById('toolkit-toggle').textContent='‹';
   document.getElementById('toolkit-overlay').classList.remove('active');
   document.body.classList.remove('toolkit-open');
-  try{localStorage.setItem('motherTree_toolkitOpen','false');}catch(e){}
+  db_setting('toolkit_open',false).catch(function(){});
 }
 function toggleToolkit(){_toolkitOpen?closeToolkit():openToolkit();}
 
@@ -894,7 +894,7 @@ function switchToolkitTab(tab){
   document.querySelectorAll('.tk-panel').forEach(function(p){
     p.classList.toggle('active',p.id==='tkp-'+tab);
   });
-  try{localStorage.setItem('motherTree_toolkitTab',tab);}catch(e){}
+  db_setting('toolkit_tab',tab).catch(function(){});
   // Lazy render tab content on first open
   if(tab==='rules'&&typeof _rulesRendered!=='undefined'&&!_rulesRendered)renderRulesTab();
   if(tab==='notes'&&typeof renderNotesTab==='function')renderNotesTab();
@@ -902,12 +902,14 @@ function switchToolkitTab(tab){
 }
 
 function restoreToolkitState(){
-  try{
-    var wasOpen=localStorage.getItem('motherTree_toolkitOpen')==='true';
-    var savedTab=localStorage.getItem('motherTree_toolkitTab')||'rules';
+  return Promise.all([
+    db_setting('toolkit_open'),
+    db_setting('toolkit_tab')
+  ]).then(function(vals){
+    var wasOpen=vals[0],savedTab=vals[1]||'rules';
     switchToolkitTab(savedTab);
     if(wasOpen)openToolkit();
-  }catch(e){}
+  }).catch(function(){});
 }
 
 // §INIT
