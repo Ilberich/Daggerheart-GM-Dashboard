@@ -37,16 +37,17 @@ Once an adversary enters combat, GMs can now view their abilities and track cond
 
 ---
 
-### 🔲 3. Full Session Persistence (localStorage)
-Currently only custom adversaries persist. Combat state and lore tabs are lost on page refresh.
+### ✅ 3. Full Session Persistence (localStorage)
+All combat state and lore tabs survive page refresh. Battle tabs (Task 8) also persist in full.
 
-- [ ] Persist `round` counter, `battleStarted` flag, `playerCount`
-- [ ] Persist `combatants` array (HP dots, Stress dots, Defeated state, Status effects)
-- [ ] Persist `cart` (pre-battle encounter queue)
-- [ ] Persist open dynamic tabs: `{ id, title, icon, rawMd }` — re-render on reload
-- [ ] Save on every mutation; restore on `init()`
+- [x] Persist `round` counter, `battleStarted` flag, `playerCount`
+- [x] Persist `combatants` array (HP dots, Stress dots, Defeated state, Status effects)
+- [x] Persist `cart` (pre-battle encounter queue)
+- [x] Persist open dynamic tabs: `{ id, title, icon, rawMd }` — re-render on reload
+- [x] Save on every mutation; restore on `init()`
+- [x] Persist all battle tabs as `battles[]` array; backward-compatible with old single-battle format
 
-**Files:** `app.js` (§SESSION section)
+**Files:** `app.js` (§SESSION, §BATTLE_TABS)
 
 ---
 
@@ -64,18 +65,18 @@ Port the 9-theme system from the Daggerheart Character Sheet repo.
 
 ---
 
-### 🔲 5. Browser-Style Tab System Redesign
-Current tabs look like nav buttons. Requested: Chrome/Firefox style.
+### ✅ 5. Browser-Style Tab System Redesign
+Tabs now have Chrome/Firefox styling. Battle tabs and lore tabs share the same visual treatment.
 
-- [ ] Rounded top corners (`border-radius: 8px 8px 0 0`), flat bottom edge
-- [ ] Active tab visually raised — lighter background, connects to panel below
-- [ ] Inactive tabs slightly dimmer/recessed
-- [ ] Icon (emoji "favicon") left of each tab label
-- [ ] `+` New Tab button pinned at the right end of the tab bar
-- [ ] Close `×` button on all tabs except Combat Tracker (which is permanent)
-- [ ] Horizontal scroll when tabs overflow
+- [x] Rounded top corners (`border-radius: 8px 8px 0 0`), flat bottom edge
+- [x] Active tab visually raised — lighter background, connects to panel below
+- [x] Inactive tabs slightly dimmer/recessed
+- [x] Icon (emoji "favicon") left of each tab label
+- [x] `⚔ +` New Battle button and `+` Add Lore Tab button in the tab bar
+- [x] Close `×` button on all tabs except the last remaining battle tab
+- [x] Horizontal scroll when tabs overflow
 
-**Files:** `styles.css` (tab CSS rules), `index.html` (tab bar HTML)
+**Files:** `styles.css` (tab CSS rules), `index.html` (tab bar HTML), `app.js` (§BATTLE_TABS)
 
 ---
 
@@ -156,6 +157,22 @@ motives: protect lair, hoard treasure
 
 ---
 
+### ✅ 8. Battle Tabs — Multiple Concurrent Encounters
+Battles are tabs. The GM can prepare multiple encounters in advance and switch between them without losing state.
+
+- [x] Replace the single permanent `[data-tab="combat"]` tab with a dynamic list of battle tabs
+- [x] Each battle tab has its own isolated state: `cart`, `combatants`, `round`, `battleStarted`, `playerCount`
+- [x] `⚔ +` button in the tab bar creates a new empty battle tab (auto-named "Battle 1", "Battle 2", etc.)
+- [x] Battle tabs can be renamed (double-click the tab label)
+- [x] Battle tabs (except the last remaining one) can be closed — confirm if a battle is in progress
+- [x] Switching tabs saves the current battle state and restores the target tab's state
+- [x] Session persistence: all battle tabs saved as `battles[]`; restored on reload; backward-compatible
+- [x] BP sidebar and combat controls operate on the currently active battle tab only
+
+**Files:** `index.html`, `app.js` (§BATTLE_TABS — `currentBattle`, `saveBattleState`, `loadBattleState`, `newBattle`, `switchBattle`, `closeBattle`, `renameBattle`, `renderBattleTabs`), `styles.css`
+
+---
+
 ## Suggested Additions
 
 ### 💡 S2. Session Export / Import
@@ -176,10 +193,11 @@ motives: protect lair, hoard treasure
 |---|------|--------|
 | 1 | Go fully local (no CDN) | ✅ Done |
 | 2 | Abilities & Status Effects on combat cards | ✅ Done |
-| 3 | Full session persistence | 🔲 |
+| 3 | Full session persistence | ✅ Done |
 | 4 | Character sheet theming | 🔲 |
-| 5 | Browser-style tabs | 🔲 |
+| 5 | Browser-style tabs | ✅ Done |
 | 6 | Upload Adversary button | 🔲 |
 | 7 | Adversary .MD format + sample file | 🔲 |
+| 8 | Battle tabs — multiple concurrent encounters | ✅ Done |
 | S2 | Session export / import | 🔲 |
 | S4 | Adversary search in Arsenal | 🔲 |

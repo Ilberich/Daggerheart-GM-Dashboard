@@ -1,43 +1,214 @@
 // §TAB_SYSTEM ═══════════════════════════════════════════════════════════
-// TAB SYSTEM
+// UNIFIED TAB SYSTEM (battle + lore tabs in one row, drag-to-reorder)
 // ═══════════════════════════════════════════════════════════
 let activeTab='combat';
 let tabCounter=0;
 
+// ── Drag-to-reorder ──
+var _dragSrcEl=null;
+function _addDragHandlers(tab){
+  tab.draggable=true;
+  tab.addEventListener('dragstart',function(e){
+    _dragSrcEl=tab;_tabDragging=true;
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain','');
+    requestAnimationFrame(()=>tab.classList.add('dragging'));
+  });
+  tab.addEventListener('dragend',function(){
+    tab.classList.remove('dragging');
+    document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.remove('drag-left','drag-right'));
+    _dragSrcEl=null;_tabDragging=false;
+  });
+  tab.addEventListener('dragover',function(e){
+    if(!_dragSrcEl||_dragSrcEl===tab)return;
+    e.preventDefault();e.stopPropagation();
+    const r=tab.getBoundingClientRect(),left=e.clientX<r.left+r.width/2;
+    document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.remove('drag-left','drag-right'));
+    tab.classList.add(left?'drag-left':'drag-right');
+  });
+  tab.addEventListener('dragleave',function(){tab.classList.remove('drag-left','drag-right');});
+  tab.addEventListener('drop',function(e){
+    e.preventDefault();e.stopPropagation();
+    if(!_dragSrcEl||_dragSrcEl===tab)return;
+    const r=tab.getBoundingClientRect(),before=e.clientX<r.left+r.width/2;
+    const srcId=_dragSrcEl.dataset.battletab||_dragSrcEl.dataset.tab;
+    const srcType=_dragSrcEl.dataset.battletab?'battle':'lore';
+    const tgtId=tab.dataset.battletab||tab.dataset.tab;
+    const tgtType=tab.dataset.battletab?'battle':'lore';
+    const si=tabOrder.findIndex(x=>x.id===srcId&&x.type===srcType);
+    const ti=tabOrder.findIndex(x=>x.id===tgtId&&x.type===tgtType);
+    if(si===-1||ti===-1)return;
+    const [moved]=tabOrder.splice(si,1);
+    const ni=tabOrder.findIndex(x=>x.id===tgtId&&x.type===tgtType);
+    tabOrder.splice(before?ni:ni+1,0,moved);
+    renderAllTabs();saveSession();
+  });
+}
+
+// ── Render all tabs into #all-tabs ──
+function renderAllTabs(){
+  const container=document.getElementById('all-tabs');
+  container.innerHTML='';
+  const showClose=battles.length>1;
+  tabOrder.forEach(function(entry){
+    const tab=document.createElement('div');
+    if(entry.type==='battle'){
+      const b=battles.find(x=>x.id===entry.id);if(!b)return;
+      tab.className='tab'+(activeTab==='combat'&&b.id===activeBattleId?' active':'');
+      tab.dataset.battletab=b.id;
+      tab.innerHTML='<span class="tab-icon">⚔</span>'
+        +'<span class="tab-title" ondblclick="renameBattle(\''+escH(b.id)+'\');event.stopPropagation()" title="Double-click to rename">'+escH(b.name)+'</span>'
+        +(showClose?'<button class="tab-close" onclick="closeBattle(\''+b.id+'\',event)">×</button>':'');
+      tab.addEventListener('click',function(){switchBattle(b.id);});
+    }else{
+      tab.className='tab'+(activeTab===entry.id?' active':'');
+      tab.dataset.tab=entry.id;
+      tab.innerHTML='<span class="tab-icon">'+escH(entry.icon)+'</span>'
+        +'<span class="tab-title" ondblclick="renameLoreTab(\''+entry.id+'\');event.stopPropagation()" title="Double-click to rename">'+escH(entry.title)+'</span>'
+        +'<button class="tab-close" onclick="closeTab(\''+entry.id+'\',event)">×</button>';
+      tab.addEventListener('click',function(){switchTab(entry.id);});
+    }
+    _addDragHandlers(tab);
+    container.appendChild(tab);
+  });
+}
+
+// ── Lore tab switch ──
 function switchTab(id){
+  if(activeTab==='combat')saveBattleState();
   activeTab=id;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));
+  document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
   saveSession();
 }
 
+// ── Add lore tab (creates panel + registers in tabOrder) ──
 function addTab(title,html,icon='📜',rawMd=''){
   const id='tab-'+(++tabCounter);
   tabRawMd[id]=rawMd;
-  // Tab button
-  const tab=document.createElement('div');
-  tab.className='tab';
-  tab.dataset.tab=id;
-  tab.innerHTML=`<span class="tab-icon">${icon}</span><span class="tab-title" title="${title}">${title}</span><button class="tab-close" onclick="closeTab('${id}',event)">×</button>`;
-  tab.addEventListener('click',()=>switchTab(id));
-  document.getElementById('dynamic-tabs').appendChild(tab);
-  // Panel
   const panel=document.createElement('div');
   panel.className='tab-panel';
   panel.id='panel-'+id;
-  panel.innerHTML=`<div class="md-panel"><div class="md-content">${html}</div></div>`;
+  panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
   document.getElementById('dynamic-panels').appendChild(panel);
+  tabOrder.push({type:'lore',id,title,icon});
+  renderAllTabs();
   switchTab(id);
   return id;
 }
 
+// ── Close lore tab ──
 function closeTab(id,e){
   e.stopPropagation();
-  document.querySelector(`.tab[data-tab="${id}"]`)?.remove();
+  tabOrder=tabOrder.filter(x=>!(x.type==='lore'&&x.id===id));
   document.getElementById('panel-'+id)?.remove();
   delete tabRawMd[id];
-  if(activeTab===id)switchTab('combat');
+  if(activeTab===id){
+    activeTab='combat';
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  }
+  renderAllTabs();saveSession();
+}
+
+// §BATTLE_TABS ═══════════════════════════════════════════════════════════
+// BATTLE TAB MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function currentBattle(){return battles.find(b=>b.id===activeBattleId);}
+
+function saveBattleState(){
+  const b=currentBattle();if(!b)return;
+  Object.assign(b,{battleStarted,round,playerCount,cart,combatants,iid});
+}
+
+function loadBattleState(b){
+  battleStarted=b.battleStarted;round=b.round;
+  playerCount=b.playerCount;bpTotal=3*playerCount+2;
+  cart=b.cart;combatants=b.combatants;iid=b.iid;
+}
+
+function applyBattleToDOM(){
+  document.getElementById('player-count').value=playerCount;
+  document.getElementById('btn-begin').style.display=battleStarted?'none':'';
+  document.getElementById('btn-reset').style.display=battleStarted?'':'none';
+  document.getElementById('btn-add-more').style.display=battleStarted?'':'none';
+  document.getElementById('round-badge').style.display=battleStarted?'':'none';
+  if(battleStarted)document.getElementById('round-num').textContent=round;
+  syncBP();renderList();
+  if(battleStarted){renderCombat();}else{renderStage();}
+  statusBar();
+}
+
+function newBattle(){
+  saveBattleState();
+  const num=++battleTabCounter;
+  const id='battle-'+Date.now();
+  const b={id,name:'Battle '+num,battleStarted:false,round:1,playerCount,cart:[],combatants:[],iid:0};
+  battles.push(b);
+  tabOrder.push({type:'battle',id});
+  activeBattleId=id;
+  loadBattleState(b);
+  activeTab='combat';
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  renderAllTabs();
+  applyBattleToDOM();
   saveSession();
+}
+
+function switchBattle(id){
+  saveBattleState();
+  activeBattleId=id;
+  const b=currentBattle();if(!b)return;
+  loadBattleState(b);
+  activeTab='combat';
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  document.querySelectorAll('#all-tabs .tab').forEach(t=>{
+    t.classList.toggle('active',t.dataset.battletab===id);
+  });
+  applyBattleToDOM();
+  saveSession();
+}
+
+function closeBattle(id,e){
+  e.stopPropagation();
+  if(battles.length<=1)return;
+  const b=battles.find(x=>x.id===id);
+  if(b&&b.battleStarted&&!confirm(`Close "${b.name}"? This battle is in progress.`))return;
+  battles=battles.filter(x=>x.id!==id);
+  tabOrder=tabOrder.filter(x=>!(x.type==='battle'&&x.id===id));
+  if(activeBattleId===id){
+    activeBattleId=battles[battles.length-1].id;
+    loadBattleState(currentBattle());
+    activeTab='combat';
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+    applyBattleToDOM();
+  }
+  renderAllTabs();saveSession();
+}
+
+function renameBattle(id){
+  const b=battles.find(x=>x.id===id);if(!b)return;
+  const span=document.querySelector(`[data-battletab="${id}"] .tab-title`);if(!span)return;
+  span.innerHTML=`<input class="inline-edit" value="${escH(b.name)}" style="width:80px" onblur="commitBattleRename('${id}',this)" onkeydown="inlineKey(event,this)">`;
+  span.querySelector('input').select();
+}
+
+function commitBattleRename(id,inp){
+  const b=battles.find(x=>x.id===id);if(!b)return;
+  if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)b.name=v;}
+  renderAllTabs();saveSession();
+}
+
+function renameLoreTab(id){
+  const entry=tabOrder.find(x=>x.type==='lore'&&x.id===id);if(!entry)return;
+  const span=document.querySelector(`[data-tab="${id}"] .tab-title`);if(!span)return;
+  span.innerHTML=`<input class="inline-edit" value="${escH(entry.title)}" style="width:80px" onblur="commitLoreTabRename('${id}',this)" onkeydown="inlineKey(event,this)">`;
+  span.querySelector('input').select();
+}
+
+function commitLoreTabRename(id,inp){
+  const entry=tabOrder.find(x=>x.type==='lore'&&x.id===id);if(!entry)return;
+  if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)entry.title=v;}
+  renderAllTabs();saveSession();
 }
 
 // §MARKDOWN ═══════════════════════════════════════════════════════════
@@ -85,10 +256,11 @@ function renderMd(raw,title){
   return html;
 }
 
-// Drag and drop
-document.addEventListener('dragover',e=>{e.preventDefault();document.getElementById('drop-overlay').classList.add('active');});
-document.addEventListener('dragleave',e=>{if(e.relatedTarget===null)document.getElementById('drop-overlay').classList.remove('active');});
+// Drag and drop — file drops only (tab drags skip via _tabDragging flag)
+document.addEventListener('dragover',e=>{if(_tabDragging)return;e.preventDefault();document.getElementById('drop-overlay').classList.add('active');});
+document.addEventListener('dragleave',e=>{if(_tabDragging)return;if(e.relatedTarget===null)document.getElementById('drop-overlay').classList.remove('active');});
 document.addEventListener('drop',e=>{
+  if(_tabDragging)return;
   e.preventDefault();
   document.getElementById('drop-overlay').classList.remove('active');
   const files=[...e.dataTransfer.files].filter(f=>f.name.match(/\.(md|markdown)$/i));
@@ -166,8 +338,12 @@ let playerCount=4,bpTotal=14,bpSpent=0;
 let cart=[],combatants=[],filterType='all',filterSearch='',iid=0;
 let expanded=new Set();
 var tabRawMd={};
+var tabOrder=[];   // [{type:'battle'|'lore', id, title?, icon?}] — unified display order
 var _restoring=false;
 var SESSION_KEY='motherTree_session';
+var _tabDragging=false; // true while a tab is being drag-reordered
+// Battle tab management
+var battles=[],activeBattleId=null,battleTabCounter=0;
 
 // §BP_SIDEBAR
 function toggleSidebar(){
@@ -182,7 +358,9 @@ function openSidebar(){if(!sidebarOpen)toggleSidebar();}
 
 function updateBP(){
   playerCount=parseInt(document.getElementById('player-count').value)||4;
-  bpTotal=3*playerCount+2;syncBP();saveSession();
+  bpTotal=3*playerCount+2;
+  const b=currentBattle();if(b)b.playerCount=playerCount;
+  syncBP();saveSession();
 }
 function syncBP(){
   bpSpent=battleStarted?combatants.reduce((s,c)=>s+COSTS[c.type],0):cart.reduce((s,c)=>s+COSTS[c.type],0);
@@ -273,8 +451,8 @@ function combatCard(c){
   const pickerHTML=available.map(s=>`<button class="status-option" onclick="addStatus('${c._iid}','${s}')">${s}</button>`).join('');
   const statusSection=`<div class="card-statuses">${badgesHTML}<button class="status-add-btn" onclick="toggleStatusPicker('${c._iid}')">+ Status</button><div class="status-picker" id="sp-${c._iid}">${pickerHTML}</div></div>`;
   const feats=c.feats||[];
-  const abilitiesSection=feats.length?`<button class="card-abilities-toggle" data-cabiid="${c._iid}" onclick="toggleCardAbilities('${c._iid}')">▼ Abilities</button><div class="card-abilities" id="ca-${c._iid}">${feats.map(f=>`<div class="ability-item"><div class="ability-header">${tagHTML(f.k)}<span class="ability-name">${f.n}</span></div><div class="ability-desc">${f.d}</div></div>`).join('')}</div>`:'';
-  return `<div class="combat-card${c.defeated?' defeated':''}" id="cc-${c._iid}"><button class="card-dismiss" onclick="removeCombatant('${c._iid}')">✕</button><div class="card-header"><div class="card-name">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">THR <span>${thrStr}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span><span class="card-stat"><span>${c.dmg}</span></span></div>${c.defeated?'<div class="defeated-banner">⚰ Defeated</div>':''}<div class="dots-section"><div class="dots-label" style="color:var(--hp-color)">HP · ${c.hp_m.filter(Boolean).length}/${c.hp}</div><div class="dots-row">${hpDots}</div></div><div class="dots-section"><div class="dots-label" style="color:var(--stress-color)">Stress · ${c.st_m.filter(Boolean).length}/${c.st}</div><div class="dots-row">${stDots}</div></div>${statusSection}${abilitiesSection}</div>`;
+  const abilitiesSection=feats.length?`<button class="card-abilities-toggle" data-cabiid="${c._iid}" onclick="toggleCardAbilities('${c._iid}')">▼ Abilities</button><div class="card-abilities" id="ca-${c._iid}">${feats.map((f,i)=>`<div class="ability-item"><div class="ability-header">${tagHTML(f.k)}<span class="ability-name" data-featidx="${i}" ondblclick="startEditFeatName('${c._iid}',${i})" title="Double-click to rename">${f.n}</span></div><div class="ability-desc">${f.d}</div></div>`).join('')}</div>`:'';
+  return `<div class="combat-card${c.defeated?' defeated':''}" id="cc-${c._iid}"><button class="card-dismiss" onclick="removeCombatant('${c._iid}')">✕</button><div class="card-header"><div class="card-name" ondblclick="startEditName('${c._iid}')" title="Double-click to rename">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">THR <span>${thrStr}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span><span class="card-stat"><span>${c.dmg}</span></span></div>${c.defeated?'<div class="defeated-banner">⚰ Defeated</div>':''}<div class="dots-section"><div class="dots-label" style="color:var(--hp-color)">HP · ${c.hp_m.filter(Boolean).length}/${c.hp}</div><div class="dots-row">${hpDots}</div></div><div class="dots-section"><div class="dots-label" style="color:var(--stress-color)">Stress · ${c.st_m.filter(Boolean).length}/${c.st}</div><div class="dots-row">${stDots}</div></div>${statusSection}${abilitiesSection}</div>`;
 }
 function toggleDot(kind,_iid,idx){
   const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
@@ -306,6 +484,34 @@ function toggleCardAbilities(_iid){
   panel.classList.toggle('open');
   const btn=document.querySelector(`[data-cabiid="${_iid}"]`);
   if(btn)btn.textContent=panel.classList.contains('open')?'▲ Abilities':'▼ Abilities';
+}
+function inlineKey(e,inp){
+  if(e.key==='Enter'){e.preventDefault();inp.blur();}
+  if(e.key==='Escape'){inp.dataset.cancelled='1';inp.blur();}
+}
+function startEditName(_iid){
+  const el=document.querySelector(`#cc-${_iid} .card-name`);if(!el)return;
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
+  el.innerHTML=`<input class="inline-edit" value="${escH(c.name)}" onblur="commitEditName('${_iid}',this)" onkeydown="inlineKey(event,this)">`;
+  el.querySelector('input').select();
+}
+function commitEditName(_iid,inp){
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
+  if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)c.name=v;}
+  const el=document.getElementById(`cc-${_iid}`);if(el)el.outerHTML=combatCard(c);
+  saveSession();
+}
+function startEditFeatName(_iid,idx){
+  const el=document.querySelector(`#cc-${_iid} [data-featidx="${idx}"]`);if(!el)return;
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c||!c.feats||!c.feats[idx])return;
+  el.innerHTML=`<input class="inline-edit feat-name-edit" value="${escH(c.feats[idx].n)}" onblur="commitEditFeatName('${_iid}',${idx},this)" onkeydown="inlineKey(event,this)">`;
+  el.querySelector('input').select();
+}
+function commitEditFeatName(_iid,idx,inp){
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c||!c.feats||!c.feats[idx])return;
+  if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)c.feats[idx].n=v;}
+  const el=document.getElementById(`cc-${_iid}`);if(el)el.outerHTML=combatCard(c);
+  saveSession();
 }
 function statusBar(){
   document.getElementById('status-active').textContent=battleStarted?combatants.filter(c=>!c.defeated).length:cart.length;
@@ -452,28 +658,27 @@ function deleteCustomAdv(id,e){
 // ═══════════════════════════════════════════════════════════
 function saveSession(){
   if(_restoring)return;
-  var tabs=[];
-  var activeTabIdx=-1;
-  var idx=0;
-  document.querySelectorAll('#dynamic-tabs .tab').forEach(function(tab){
-    var id=tab.dataset.tab;
-    if(id===activeTab)activeTabIdx=idx;
-    var title=tab.querySelector('.tab-title').textContent;
-    var icon=tab.querySelector('.tab-icon').textContent;
-    tabs.push({title:title,icon:icon,rawMd:tabRawMd[id]||''});
-    idx++;
-  });
+  saveBattleState();
+  // Build loreTabs map: id → rawMd
+  var loreTabs={};
+  tabOrder.forEach(function(e){if(e.type==='lore')loreTabs[e.id]=tabRawMd[e.id]||'';});
   var state={
-    playerCount:playerCount,
-    round:round,
-    battleStarted:battleStarted,
-    iid:iid,
-    cart:cart,
-    combatants:combatants,
-    activeTabIdx:activeTabIdx,
-    tabs:tabs
+    battles:battles,
+    activeBattleId:activeBattleId,
+    battleTabCounter:battleTabCounter,
+    activeTab:activeTab,
+    tabOrder:tabOrder,
+    loreTabs:loreTabs
   };
   try{localStorage.setItem(SESSION_KEY,JSON.stringify(state));}catch(e){}
+}
+
+function _restoreCombatant(c){
+  return Object.assign({},c,{
+    hp_m:Array.isArray(c.hp_m)?c.hp_m:new Array(c.hp).fill(false),
+    st_m:Array.isArray(c.st_m)?c.st_m:new Array(c.st).fill(false),
+    activeStatuses:Array.isArray(c.activeStatuses)?c.activeStatuses:[]
+  });
 }
 
 function loadSession(){
@@ -482,42 +687,102 @@ function loadSession(){
     var raw=localStorage.getItem(SESSION_KEY);
     if(!raw){_restoring=false;return;}
     var state=JSON.parse(raw);
-    if(state.playerCount){
-      playerCount=state.playerCount;
+
+    // ── Restore battles ──
+    if(state.battles&&state.battles.length){
+      battleTabCounter=state.battleTabCounter||state.battles.length;
+      battles=state.battles.map(function(b){
+        return {
+          id:b.id,name:b.name||'Battle 1',
+          battleStarted:!!b.battleStarted,round:b.round||1,
+          playerCount:b.playerCount||4,iid:b.iid||0,
+          cart:b.cart||[],
+          combatants:(b.combatants||[]).map(_restoreCombatant)
+        };
+      });
+      activeBattleId=state.activeBattleId||battles[0].id;
+      loadBattleState(currentBattle());
+    } else if(state.playerCount!=null){
+      // Legacy single-battle format
+      battleTabCounter=1;
+      battles=[{
+        id:'battle-1',name:'Battle 1',
+        battleStarted:!!state.battleStarted,round:state.round||1,
+        playerCount:state.playerCount||4,iid:state.iid||0,
+        cart:state.cart||[],
+        combatants:(state.combatants||[]).map(_restoreCombatant)
+      }];
+      activeBattleId='battle-1';
+      loadBattleState(currentBattle());
+    }
+
+    // Apply battle UI state to DOM
+    if(battles.length){
       document.getElementById('player-count').value=playerCount;
-      bpTotal=3*playerCount+2;
+      document.getElementById('btn-begin').style.display=battleStarted?'none':'';
+      document.getElementById('btn-reset').style.display=battleStarted?'':'none';
+      document.getElementById('btn-add-more').style.display=battleStarted?'':'none';
+      document.getElementById('round-badge').style.display=battleStarted?'':'none';
+      if(battleStarted)document.getElementById('round-num').textContent=round;
     }
-    if(state.iid)iid=state.iid;
-    if(!state.battleStarted&&state.cart&&state.cart.length){
-      cart=state.cart;
-    }
-    if(state.battleStarted){
-      round=state.round||1;
-      battleStarted=true;
-      combatants=(state.combatants||[]).map(function(c){
-        return Object.assign({},c,{
-          hp_m:Array.isArray(c.hp_m)?c.hp_m:new Array(c.hp).fill(false),
-          st_m:Array.isArray(c.st_m)?c.st_m:new Array(c.st).fill(false),
-          activeStatuses:Array.isArray(c.activeStatuses)?c.activeStatuses:[]
-        });
+
+    // ── Restore tab order and lore panels ──
+    if(state.tabOrder){
+      // New format: tabOrder includes both battle and lore entries
+      tabOrder=state.tabOrder;
+      tabOrder.forEach(function(entry){
+        if(entry.type==='lore'){
+          var rawMd=(state.loreTabs&&state.loreTabs[entry.id])||'';
+          tabRawMd[entry.id]=rawMd;
+          var num=parseInt((entry.id||'').split('-')[1]||0);
+          if(num>tabCounter)tabCounter=num;
+          var html=renderMd(rawMd,entry.title);
+          var panel=document.createElement('div');
+          panel.className='tab-panel';panel.id='panel-'+entry.id;
+          panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+          document.getElementById('dynamic-panels').appendChild(panel);
+        }
       });
-      document.getElementById('btn-begin').style.display='none';
-      document.getElementById('btn-reset').style.display='';
-      document.getElementById('btn-add-more').style.display='';
-      document.getElementById('round-badge').style.display='';
-      document.getElementById('round-num').textContent=round;
-    }
-    if(state.tabs&&state.tabs.length){
-      state.tabs.forEach(function(t){
+    } else if(state.tabs&&state.tabs.length){
+      // Legacy format: build tabOrder from battles + flat tabs array
+      tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
+      state.tabs.forEach(function(t,i){
+        var id='tab-'+(i+1);
+        if(i+1>tabCounter)tabCounter=i+1;
+        tabRawMd[id]=t.rawMd||'';
+        tabOrder.push({type:'lore',id:id,title:t.title,icon:t.icon||'📜'});
         var html=renderMd(t.rawMd||'',t.title);
-        addTab(t.title,html,t.icon,t.rawMd||'');
+        var panel=document.createElement('div');
+        panel.className='tab-panel';panel.id='panel-'+id;
+        panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+        document.getElementById('dynamic-panels').appendChild(panel);
       });
-      if(state.activeTabIdx>=0){
-        var dynTabs=document.querySelectorAll('#dynamic-tabs .tab');
-        if(dynTabs[state.activeTabIdx])switchTab(dynTabs[state.activeTabIdx].dataset.tab);
+    } else {
+      // No lore tabs — just battles
+      tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
+    }
+
+    renderAllTabs();
+
+    // ── Restore active tab ──
+    var savedActive=state.activeTab||'combat';
+    if(savedActive!=='combat'&&tabRawMd[savedActive]){
+      activeTab=savedActive;
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+savedActive));
+      document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===savedActive));
+    } else {
+      activeTab='combat';
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+      // Legacy activeTabIdx fallback
+      if(state.activeTabIdx>=0&&state.tabs&&state.tabs[state.activeTabIdx]){
+        var lid='tab-'+(state.activeTabIdx+1);
+        if(tabRawMd[lid]){activeTab=lid;
+          document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+lid));
+          document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===lid));
+        }
       }
     }
-  }catch(e){}
+  }catch(e){console.error('loadSession:',e);}
   _restoring=false;
 }
 
@@ -602,6 +867,15 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCustomM
 loadCustomAdv();
 (function init(){
   loadSession();
+  // Create the first battle if no session existed
+  if(battles.length===0){
+    battleTabCounter=1;
+    const b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
+    battles.push(b);
+    activeBattleId='battle-1';
+    tabOrder=[{type:'battle',id:'battle-1'}];
+    renderAllTabs();
+  }
   updateBP();buildFilters();renderList();
   if(battleStarted){renderCombat();}else{renderStage();}
   statusBar();

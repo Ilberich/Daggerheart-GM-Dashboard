@@ -23,20 +23,12 @@
   <div class="drop-sub">Each file will open as a new lore tab</div>
 </div>
 
-<!-- TAB BAR -->
+<!-- TAB BAR — all tabs (battle + lore) injected into #all-tabs by JS -->
 <div id="tabbar">
-  <div class="tab active" data-tab="combat" onclick="switchTab('combat')">
-    <span class="tab-icon">⚔</span>
-    <span class="tab-title">Combat Tracker</span>
-  </div>
-  <!-- Dynamic tabs inserted here -->
-  <div id="dynamic-tabs"></div>
-
-  <label id="tab-upload" title="Upload .md files to open as lore tabs">
-    <span>＋</span><span>Add Lore Tab</span>
-    <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple onchange="handleFileUpload(this.files)">
-  </label>
-
+  <div id="all-tabs"></div>
+  <button id="new-battle-btn" onclick="newBattle()" title="New battle tab">⚔ +</button>
+  <button id="new-lore-btn" onclick="document.getElementById('tab-upload-input').click()" title="Add lore tab from .md file"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z"/></svg> +</button>
+  <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple style="display:none" onchange="handleFileUpload(this.files)">
   <div id="gm-badge">
     <span>THE MOTHER TREE</span>
     <strong>GM INTERFACE</strong>
