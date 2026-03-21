@@ -273,8 +273,8 @@ function combatCard(c){
   const pickerHTML=available.map(s=>`<button class="status-option" onclick="addStatus('${c._iid}','${s}')">${s}</button>`).join('');
   const statusSection=`<div class="card-statuses">${badgesHTML}<button class="status-add-btn" onclick="toggleStatusPicker('${c._iid}')">+ Status</button><div class="status-picker" id="sp-${c._iid}">${pickerHTML}</div></div>`;
   const feats=c.feats||[];
-  const abilitiesSection=feats.length?`<button class="card-abilities-toggle" data-cabiid="${c._iid}" onclick="toggleCardAbilities('${c._iid}')">▼ Abilities</button><div class="card-abilities" id="ca-${c._iid}">${feats.map(f=>`<div class="ability-item"><div class="ability-header">${tagHTML(f.k)}<span class="ability-name">${f.n}</span></div><div class="ability-desc">${f.d}</div></div>`).join('')}</div>`:'';
-  return `<div class="combat-card${c.defeated?' defeated':''}" id="cc-${c._iid}"><button class="card-dismiss" onclick="removeCombatant('${c._iid}')">✕</button><div class="card-header"><div class="card-name">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">THR <span>${thrStr}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span><span class="card-stat"><span>${c.dmg}</span></span></div>${c.defeated?'<div class="defeated-banner">⚰ Defeated</div>':''}<div class="dots-section"><div class="dots-label" style="color:var(--hp-color)">HP · ${c.hp_m.filter(Boolean).length}/${c.hp}</div><div class="dots-row">${hpDots}</div></div><div class="dots-section"><div class="dots-label" style="color:var(--stress-color)">Stress · ${c.st_m.filter(Boolean).length}/${c.st}</div><div class="dots-row">${stDots}</div></div>${statusSection}${abilitiesSection}</div>`;
+  const abilitiesSection=feats.length?`<button class="card-abilities-toggle" data-cabiid="${c._iid}" onclick="toggleCardAbilities('${c._iid}')">▼ Abilities</button><div class="card-abilities" id="ca-${c._iid}">${feats.map((f,i)=>`<div class="ability-item"><div class="ability-header">${tagHTML(f.k)}<span class="ability-name" data-featidx="${i}" ondblclick="startEditFeatName('${c._iid}',${i})" title="Double-click to rename">${f.n}</span></div><div class="ability-desc">${f.d}</div></div>`).join('')}</div>`:'';
+  return `<div class="combat-card${c.defeated?' defeated':''}" id="cc-${c._iid}"><button class="card-dismiss" onclick="removeCombatant('${c._iid}')">✕</button><div class="card-header"><div class="card-name" ondblclick="startEditName('${c._iid}')" title="Double-click to rename">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">THR <span>${thrStr}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span><span class="card-stat"><span>${c.dmg}</span></span></div>${c.defeated?'<div class="defeated-banner">⚰ Defeated</div>':''}<div class="dots-section"><div class="dots-label" style="color:var(--hp-color)">HP · ${c.hp_m.filter(Boolean).length}/${c.hp}</div><div class="dots-row">${hpDots}</div></div><div class="dots-section"><div class="dots-label" style="color:var(--stress-color)">Stress · ${c.st_m.filter(Boolean).length}/${c.st}</div><div class="dots-row">${stDots}</div></div>${statusSection}${abilitiesSection}</div>`;
 }
 function toggleDot(kind,_iid,idx){
   const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
@@ -306,6 +306,34 @@ function toggleCardAbilities(_iid){
   panel.classList.toggle('open');
   const btn=document.querySelector(`[data-cabiid="${_iid}"]`);
   if(btn)btn.textContent=panel.classList.contains('open')?'▲ Abilities':'▼ Abilities';
+}
+function inlineKey(e,inp){
+  if(e.key==='Enter'){e.preventDefault();inp.blur();}
+  if(e.key==='Escape'){inp.dataset.cancelled='1';inp.blur();}
+}
+function startEditName(_iid){
+  const el=document.querySelector(`#cc-${_iid} .card-name`);if(!el)return;
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
+  el.innerHTML=`<input class="inline-edit" value="${escH(c.name)}" onblur="commitEditName('${_iid}',this)" onkeydown="inlineKey(event,this)">`;
+  el.querySelector('input').select();
+}
+function commitEditName(_iid,inp){
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
+  if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)c.name=v;}
+  const el=document.getElementById(`cc-${_iid}`);if(el)el.outerHTML=combatCard(c);
+  saveSession();
+}
+function startEditFeatName(_iid,idx){
+  const el=document.querySelector(`#cc-${_iid} [data-featidx="${idx}"]`);if(!el)return;
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c||!c.feats||!c.feats[idx])return;
+  el.innerHTML=`<input class="inline-edit feat-name-edit" value="${escH(c.feats[idx].n)}" onblur="commitEditFeatName('${_iid}',${idx},this)" onkeydown="inlineKey(event,this)">`;
+  el.querySelector('input').select();
+}
+function commitEditFeatName(_iid,idx,inp){
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c||!c.feats||!c.feats[idx])return;
+  if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)c.feats[idx].n=v;}
+  const el=document.getElementById(`cc-${_iid}`);if(el)el.outerHTML=combatCard(c);
+  saveSession();
 }
 function statusBar(){
   document.getElementById('status-active').textContent=battleStarted?combatants.filter(c=>!c.defeated).length:cart.length;
