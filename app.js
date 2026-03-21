@@ -610,6 +610,38 @@ function showToast(msg,duration){
   clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('show');},duration);
 }
 
+// §DB_MIGRATE ═══════════════════════════════════════════════════════════
+// ONE-TIME MIGRATION: localStorage → IndexedDB
+// ═══════════════════════════════════════════════════════════════════════
+function db_migrate(){
+  return db_setting('data_migrated').then(function(done){
+    if(done)return;
+    var promises=[];
+    var sessRaw=localStorage.getItem('motherTree_session');
+    if(sessRaw){
+      try{
+        var sess=JSON.parse(sessRaw);
+        promises.push(db_put('combat_session',Object.assign({key:'state'},sess)));
+      }catch(e){}
+    }
+    var advRaw=localStorage.getItem('motherTree_customAdv');
+    if(advRaw){
+      try{
+        JSON.parse(advRaw).forEach(function(a){
+          if(!a.id)a.id='custom_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+          promises.push(db_put('custom_adversaries',a));
+        });
+      }catch(e){}
+    }
+    return Promise.all(promises)
+      .then(function(){return db_setting('data_migrated',true);})
+      .then(function(){
+        if(sessRaw||advRaw)
+          showToast('Your session data has been migrated to IndexedDB for safer storage.');
+      });
+  });
+}
+
 // §CUSTOM_ADV ═══════════════════════════════════════════════════════════
 // CUSTOM ADVERSARY SYSTEM
 // ═══════════════════════════════════════════════════════════
