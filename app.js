@@ -812,7 +812,9 @@ function saveSession(){
     tabOrder:tabOrder,
     loreTabs:loreTabs
   };
-  try{localStorage.setItem(SESSION_KEY,JSON.stringify(state));}catch(e){}
+  db_put('combat_session',Object.assign({key:'state'},state)).catch(function(){
+    try{localStorage.setItem(SESSION_KEY,JSON.stringify(state));}catch(e){}
+  });
 }
 
 function _restoreCombatant(c){
@@ -825,107 +827,114 @@ function _restoreCombatant(c){
 
 function loadSession(){
   _restoring=true;
-  try{
-    var raw=localStorage.getItem(SESSION_KEY);
-    if(!raw){_restoring=false;return;}
-    var state=JSON.parse(raw);
-
-    // ── Restore battles ──
-    if(state.battles&&state.battles.length){
-      battleTabCounter=state.battleTabCounter||state.battles.length;
-      battles=state.battles.map(function(b){
-        return {
-          id:b.id,name:b.name||'Battle 1',
-          battleStarted:!!b.battleStarted,round:b.round||1,
-          playerCount:b.playerCount||4,iid:b.iid||0,
-          cart:b.cart||[],
-          combatants:(b.combatants||[]).map(_restoreCombatant)
-        };
-      });
-      activeBattleId=state.activeBattleId||battles[0].id;
-      loadBattleState(currentBattle());
-    } else if(state.playerCount!=null){
-      // Legacy single-battle format
-      battleTabCounter=1;
-      battles=[{
-        id:'battle-1',name:'Battle 1',
-        battleStarted:!!state.battleStarted,round:state.round||1,
-        playerCount:state.playerCount||4,iid:state.iid||0,
-        cart:state.cart||[],
-        combatants:(state.combatants||[]).map(_restoreCombatant)
-      }];
-      activeBattleId='battle-1';
-      loadBattleState(currentBattle());
+  return db_get('combat_session','state').then(function(record){
+    var state=record?Object.assign({},record):null;
+    // Fallback: try localStorage if IndexedDB had nothing
+    if(!state){
+      try{var raw=localStorage.getItem(SESSION_KEY);if(raw)state=JSON.parse(raw);}catch(e){}
     }
+    if(!state){_restoring=false;return;}
+    try{
+      // ── Restore battles ──
+      if(state.battles&&state.battles.length){
+        battleTabCounter=state.battleTabCounter||state.battles.length;
+        battles=state.battles.map(function(b){
+          return {
+            id:b.id,name:b.name||'Battle 1',
+            battleStarted:!!b.battleStarted,round:b.round||1,
+            playerCount:b.playerCount||4,iid:b.iid||0,
+            cart:b.cart||[],
+            combatants:(b.combatants||[]).map(_restoreCombatant)
+          };
+        });
+        activeBattleId=state.activeBattleId||battles[0].id;
+        loadBattleState(currentBattle());
+      } else if(state.playerCount!=null){
+        // Legacy single-battle format
+        battleTabCounter=1;
+        battles=[{
+          id:'battle-1',name:'Battle 1',
+          battleStarted:!!state.battleStarted,round:state.round||1,
+          playerCount:state.playerCount||4,iid:state.iid||0,
+          cart:state.cart||[],
+          combatants:(state.combatants||[]).map(_restoreCombatant)
+        }];
+        activeBattleId='battle-1';
+        loadBattleState(currentBattle());
+      }
 
-    // Apply battle UI state to DOM
-    if(battles.length){
-      document.getElementById('player-count').value=playerCount;
-      document.getElementById('btn-begin').style.display=battleStarted?'none':'';
-      document.getElementById('btn-reset').style.display=battleStarted?'':'none';
-      document.getElementById('btn-add-more').style.display=battleStarted?'':'none';
-      document.getElementById('round-badge').style.display=battleStarted?'':'none';
-      if(battleStarted)document.getElementById('round-num').textContent=round;
-    }
+      // Apply battle UI state to DOM
+      if(battles.length){
+        document.getElementById('player-count').value=playerCount;
+        document.getElementById('btn-begin').style.display=battleStarted?'none':'';
+        document.getElementById('btn-reset').style.display=battleStarted?'':'none';
+        document.getElementById('btn-add-more').style.display=battleStarted?'':'none';
+        document.getElementById('round-badge').style.display=battleStarted?'':'none';
+        if(battleStarted)document.getElementById('round-num').textContent=round;
+      }
 
-    // ── Restore tab order and lore panels ──
-    if(state.tabOrder){
-      // New format: tabOrder includes both battle and lore entries
-      tabOrder=state.tabOrder;
-      tabOrder.forEach(function(entry){
-        if(entry.type==='lore'){
-          var rawMd=(state.loreTabs&&state.loreTabs[entry.id])||'';
-          tabRawMd[entry.id]=rawMd;
-          var num=parseInt((entry.id||'').split('-')[1]||0);
-          if(num>tabCounter)tabCounter=num;
-          var html=renderMd(rawMd,entry.title);
+      // ── Restore tab order and lore panels ──
+      if(state.tabOrder){
+        // New format: tabOrder includes both battle and lore entries
+        tabOrder=state.tabOrder;
+        tabOrder.forEach(function(entry){
+          if(entry.type==='lore'){
+            var rawMd=(state.loreTabs&&state.loreTabs[entry.id])||'';
+            tabRawMd[entry.id]=rawMd;
+            var num=parseInt((entry.id||'').split('-')[1]||0);
+            if(num>tabCounter)tabCounter=num;
+            var html=renderMd(rawMd,entry.title);
+            var panel=document.createElement('div');
+            panel.className='tab-panel';panel.id='panel-'+entry.id;
+            panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+            document.getElementById('dynamic-panels').appendChild(panel);
+          }
+        });
+      } else if(state.tabs&&state.tabs.length){
+        // Legacy format: build tabOrder from battles + flat tabs array
+        tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
+        state.tabs.forEach(function(t,i){
+          var id='tab-'+(i+1);
+          if(i+1>tabCounter)tabCounter=i+1;
+          tabRawMd[id]=t.rawMd||'';
+          tabOrder.push({type:'lore',id:id,title:t.title,icon:t.icon||'📜'});
+          var html=renderMd(t.rawMd||'',t.title);
           var panel=document.createElement('div');
-          panel.className='tab-panel';panel.id='panel-'+entry.id;
+          panel.className='tab-panel';panel.id='panel-'+id;
           panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
           document.getElementById('dynamic-panels').appendChild(panel);
-        }
-      });
-    } else if(state.tabs&&state.tabs.length){
-      // Legacy format: build tabOrder from battles + flat tabs array
-      tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
-      state.tabs.forEach(function(t,i){
-        var id='tab-'+(i+1);
-        if(i+1>tabCounter)tabCounter=i+1;
-        tabRawMd[id]=t.rawMd||'';
-        tabOrder.push({type:'lore',id:id,title:t.title,icon:t.icon||'📜'});
-        var html=renderMd(t.rawMd||'',t.title);
-        var panel=document.createElement('div');
-        panel.className='tab-panel';panel.id='panel-'+id;
-        panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
-        document.getElementById('dynamic-panels').appendChild(panel);
-      });
-    } else {
-      // No lore tabs — just battles
-      tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
-    }
+        });
+      } else {
+        // No lore tabs — just battles
+        tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
+      }
 
-    renderAllTabs();
+      renderAllTabs();
 
-    // ── Restore active tab ──
-    var savedActive=state.activeTab||'combat';
-    if(savedActive!=='combat'&&tabRawMd[savedActive]){
-      activeTab=savedActive;
-      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+savedActive));
-      document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===savedActive));
-    } else {
-      activeTab='combat';
-      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
-      // Legacy activeTabIdx fallback
-      if(state.activeTabIdx>=0&&state.tabs&&state.tabs[state.activeTabIdx]){
-        var lid='tab-'+(state.activeTabIdx+1);
-        if(tabRawMd[lid]){activeTab=lid;
-          document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+lid));
-          document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===lid));
+      // ── Restore active tab ──
+      var savedActive=state.activeTab||'combat';
+      if(savedActive!=='combat'&&tabRawMd[savedActive]){
+        activeTab=savedActive;
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+savedActive));
+        document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===savedActive));
+      } else {
+        activeTab='combat';
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+        // Legacy activeTabIdx fallback
+        if(state.activeTabIdx>=0&&state.tabs&&state.tabs[state.activeTabIdx]){
+          var lid='tab-'+(state.activeTabIdx+1);
+          if(tabRawMd[lid]){activeTab=lid;
+            document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+lid));
+            document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===lid));
+          }
         }
       }
-    }
-  }catch(e){console.error('loadSession:',e);}
-  _restoring=false;
+    }catch(e){console.error('loadSession:',e);}
+    _restoring=false;
+  }).catch(function(e){
+    console.error('loadSession db error:',e);
+    _restoring=false;
+  });
 }
 
 // §ADV_LIST
@@ -1009,7 +1018,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCustomM
 db_migrate().then(function(){
   return loadCustomAdv();
 }).then(function(){
-  loadSession();
+  return loadSession();
+}).then(function(){
   // Create the first battle if no session existed
   if(battles.length===0){
     battleTabCounter=1;
