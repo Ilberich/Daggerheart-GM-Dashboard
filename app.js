@@ -653,11 +653,27 @@ var STORAGE_KEY='motherTree_customAdv';
 var featRowId=0;
 
 function loadCustomAdv(){
-  try{var s=localStorage.getItem(STORAGE_KEY);if(s)customAdv=JSON.parse(s);}catch(e){}
-  customAdv.forEach(function(a){if(!ADV.find(function(x){return x.id===a.id;}))ADV.push(a);});
+  return db_getAll('custom_adversaries').then(function(items){
+    customAdv=items||[];
+    customAdv.forEach(function(a){if(!ADV.find(function(x){return x.id===a.id;}))ADV.push(a);});
+  }).catch(function(){
+    // Fallback to localStorage if IndexedDB unavailable
+    try{var s=localStorage.getItem(STORAGE_KEY);if(s)customAdv=JSON.parse(s);}catch(e){}
+    customAdv.forEach(function(a){if(!ADV.find(function(x){return x.id===a.id;}))ADV.push(a);});
+  });
 }
 function saveCustomAdvStorage(){
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(customAdv));}catch(e){}
+  // Write each custom adversary; remove any that were deleted
+  var ids=customAdv.map(function(a){return a.id;});
+  customAdv.forEach(function(a){db_put('custom_adversaries',a).catch(function(){});});
+  // Sync deletes: get all stored, remove any not in current list
+  db_getAll('custom_adversaries').then(function(stored){
+    (stored||[]).forEach(function(a){
+      if(!ids.includes(a.id))db_delete('custom_adversaries',a.id).catch(function(){});
+    });
+  }).catch(function(){
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(customAdv));}catch(e){}
+  });
 }
 
 function openCustomModal(editId){
