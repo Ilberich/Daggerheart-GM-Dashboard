@@ -1067,6 +1067,7 @@ function addTab(title,html,icon='📜',rawMd=''){
   const tab=document.createElement('div');
   tab.className='tab';
   tab.dataset.tab=id;
+  tab.style.display='inline-flex';  // Ensure tab appears inline
   tab.innerHTML=`<span class="tab-icon">${icon}</span><span class="tab-title" title="${title}">${title}</span><button class="tab-close" onclick="closeTab('${id}',event)">×</button>`;
   tab.addEventListener('click',()=>switchTab(id));
   // Insert directly into #tabbar before #tab-upload (no wrapper div)
@@ -1133,12 +1134,14 @@ function renderBattleTabs(){
     const tab=document.createElement('div');
     tab.className='tab'+(b.id===activeBattleId?' active':'');
     tab.dataset.battletab=b.id;
+    tab.style.display='inline-flex';  // Explicitly set inline-flex to ensure horizontal layout
     tab.onclick=function(){switchBattle(b.id);};
     tab.innerHTML='<span class="tab-icon">⚔</span>'
       +'<span class="tab-title" ondblclick="renameBattle(\''+escH(b.id)+'\');event.stopPropagation()" title="Double-click to rename">'+escH(b.name)+'</span>'
       +(battles.length>1?'<button class="tab-close" onclick="closeBattle(\''+b.id+'\',event)">×</button>':'');
     tabbar.insertBefore(tab,anchor);
   });
+  console.log('renderBattleTabs: inserted',battles.length,'tabs');
 }
 
 function newBattle(){
