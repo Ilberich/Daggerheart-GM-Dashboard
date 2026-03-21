@@ -208,6 +208,8 @@ function cap(s){return s[0].toUpperCase()+s.slice(1);}
 const TAG_LABEL={passive:'Passive',action:'Action',reaction:'Reaction',fear:'Fear'};
 function tagHTML(k){return `<span class="ability-tag tag-${k}">${TAG_LABEL[k]}</span>`;}
 
+const STATUSES=['Vulnerable','Hidden','Restrained','Frightened','Bolstered','Cursed','Poisoned'];
+
 // §ENCOUNTER_QUEUE
 function addToQueue(id){
   const a=ADV.find(x=>x.id===id);if(!a)return;
@@ -235,7 +237,7 @@ function beginBattle(){
   document.getElementById('round-num').textContent=1;
   renderCombat();syncBP();renderList();statusBar();saveSession();
 }
-function mkCombatant(a){return {...a,_iid:a._iid||++iid,hp_m:new Array(a.hp).fill(false),st_m:new Array(a.st).fill(false),defeated:false};}
+function mkCombatant(a){return {...a,_iid:a._iid||++iid,hp_m:new Array(a.hp).fill(false),st_m:new Array(a.st).fill(false),defeated:false,activeStatuses:a.activeStatuses||[]};}
 function addCombatant(a){combatants.push(mkCombatant({...a,_iid:++iid}));syncBP();renderList();renderCombat();statusBar();saveSession();}
 function resetBattle(){
   if(!confirm('Reset encounter?'))return;
@@ -265,7 +267,14 @@ function combatCard(c){
   const thrStr=c.maj!=null?`${c.maj}/${c.sev??'—'}`:'—';
   const hpDots=c.hp_m.map((m,i)=>`<div class="dot dot-hp${m?' marked':''}" onclick="toggleDot('hp','${c._iid}',${i})"></div>`).join('');
   const stDots=c.st_m.map((m,i)=>`<div class="dot dot-stress${m?' marked':''}" onclick="toggleDot('st','${c._iid}',${i})"></div>`).join('');
-  return `<div class="combat-card${c.defeated?' defeated':''}" id="cc-${c._iid}"><button class="card-dismiss" onclick="removeCombatant('${c._iid}')">✕</button><div class="card-header"><div class="card-name">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">THR <span>${thrStr}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span><span class="card-stat"><span>${c.dmg}</span></span></div>${c.defeated?'<div class="defeated-banner">⚰ Defeated</div>':''}<div class="dots-section"><div class="dots-label" style="color:var(--hp-color)">HP · ${c.hp_m.filter(Boolean).length}/${c.hp}</div><div class="dots-row">${hpDots}</div></div><div class="dots-section"><div class="dots-label" style="color:var(--stress-color)">Stress · ${c.st_m.filter(Boolean).length}/${c.st}</div><div class="dots-row">${stDots}</div></div></div>`;
+  const statuses=c.activeStatuses||[];
+  const badgesHTML=statuses.map(s=>`<button class="status-badge sb-${s.toLowerCase()}" onclick="removeStatus('${c._iid}','${s}')" title="Remove ${s}">${s} ×</button>`).join('');
+  const available=STATUSES.filter(s=>!statuses.includes(s));
+  const pickerHTML=available.map(s=>`<button class="status-option" onclick="addStatus('${c._iid}','${s}')">${s}</button>`).join('');
+  const statusSection=`<div class="card-statuses">${badgesHTML}<button class="status-add-btn" onclick="toggleStatusPicker('${c._iid}')">+ Status</button><div class="status-picker" id="sp-${c._iid}">${pickerHTML}</div></div>`;
+  const feats=c.feats||[];
+  const abilitiesSection=feats.length?`<button class="card-abilities-toggle" data-cabiid="${c._iid}" onclick="toggleCardAbilities('${c._iid}')">▼ Abilities</button><div class="card-abilities" id="ca-${c._iid}">${feats.map(f=>`<div class="ability-item"><div class="ability-header">${tagHTML(f.k)}<span class="ability-name">${f.n}</span></div><div class="ability-desc">${f.d}</div></div>`).join('')}</div>`:'';
+  return `<div class="combat-card${c.defeated?' defeated':''}" id="cc-${c._iid}"><button class="card-dismiss" onclick="removeCombatant('${c._iid}')">✕</button><div class="card-header"><div class="card-name">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">THR <span>${thrStr}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span><span class="card-stat"><span>${c.dmg}</span></span></div>${c.defeated?'<div class="defeated-banner">⚰ Defeated</div>':''}<div class="dots-section"><div class="dots-label" style="color:var(--hp-color)">HP · ${c.hp_m.filter(Boolean).length}/${c.hp}</div><div class="dots-row">${hpDots}</div></div><div class="dots-section"><div class="dots-label" style="color:var(--stress-color)">Stress · ${c.st_m.filter(Boolean).length}/${c.st}</div><div class="dots-row">${stDots}</div></div>${statusSection}${abilitiesSection}</div>`;
 }
 function toggleDot(kind,_iid,idx){
   const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
@@ -277,6 +286,26 @@ function toggleDot(kind,_iid,idx){
 function removeCombatant(_iid){
   const idx=combatants.findIndex(x=>String(x._iid)===String(_iid));if(idx<0)return;
   combatants.splice(idx,1);syncBP();renderList();renderCombat();statusBar();saveSession();
+}
+function addStatus(_iid,status){
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c)return;
+  if(!c.activeStatuses)c.activeStatuses=[];
+  if(!c.activeStatuses.includes(status))c.activeStatuses.push(status);
+  const el=document.getElementById(`cc-${_iid}`);if(el)el.outerHTML=combatCard(c);
+  saveSession();
+}
+function removeStatus(_iid,status){
+  const c=combatants.find(x=>String(x._iid)===String(_iid));if(!c||!c.activeStatuses)return;
+  c.activeStatuses=c.activeStatuses.filter(s=>s!==status);
+  const el=document.getElementById(`cc-${_iid}`);if(el)el.outerHTML=combatCard(c);
+  saveSession();
+}
+function toggleStatusPicker(_iid){document.getElementById(`sp-${_iid}`)?.classList.toggle('open');}
+function toggleCardAbilities(_iid){
+  const panel=document.getElementById(`ca-${_iid}`);if(!panel)return;
+  panel.classList.toggle('open');
+  const btn=document.querySelector(`[data-cabiid="${_iid}"]`);
+  if(btn)btn.textContent=panel.classList.contains('open')?'▲ Abilities':'▼ Abilities';
 }
 function statusBar(){
   document.getElementById('status-active').textContent=battleStarted?combatants.filter(c=>!c.defeated).length:cart.length;
@@ -468,7 +497,8 @@ function loadSession(){
       combatants=(state.combatants||[]).map(function(c){
         return Object.assign({},c,{
           hp_m:Array.isArray(c.hp_m)?c.hp_m:new Array(c.hp).fill(false),
-          st_m:Array.isArray(c.st_m)?c.st_m:new Array(c.st).fill(false)
+          st_m:Array.isArray(c.st_m)?c.st_m:new Array(c.st).fill(false),
+          activeStatuses:Array.isArray(c.activeStatuses)?c.activeStatuses:[]
         });
       });
       document.getElementById('btn-begin').style.display='none';
