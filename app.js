@@ -22,7 +22,9 @@ function addTab(title,html,icon='📜',rawMd=''){
   tab.dataset.tab=id;
   tab.innerHTML=`<span class="tab-icon">${icon}</span><span class="tab-title" title="${title}">${title}</span><button class="tab-close" onclick="closeTab('${id}',event)">×</button>`;
   tab.addEventListener('click',()=>switchTab(id));
-  document.getElementById('dynamic-tabs').appendChild(tab);
+  // Insert directly into #tabbar before #tab-upload (no wrapper div)
+  const uploadLabel=document.getElementById('tab-upload');
+  document.getElementById('tabbar').insertBefore(tab,uploadLabel);
   // Panel
   const panel=document.createElement('div');
   panel.className='tab-panel';
@@ -76,8 +78,20 @@ function applyBattleToDOM(){
 }
 
 function renderBattleTabs(){
-  const container=document.getElementById('battle-tabs');if(!container)return;
-  container.innerHTML=battles.map(b=>`<div class="tab${b.id===activeBattleId?' active':''}" data-battletab="${b.id}" onclick="switchBattle('${b.id}')"><span class="tab-icon">⚔</span><span class="tab-title" ondblclick="renameBattle('${b.id}');event.stopPropagation()" title="Double-click to rename">${b.name}</span>${battles.length>1?`<button class="tab-close" onclick="closeBattle('${b.id}',event)">×</button>`:''}</div>`).join('');
+  // Remove existing battle tab elements (direct children of #tabbar)
+  document.querySelectorAll('#tabbar [data-battletab]').forEach(el=>el.remove());
+  const anchor=document.getElementById('new-battle-btn');
+  const tabbar=document.getElementById('tabbar');
+  battles.forEach(function(b){
+    const tab=document.createElement('div');
+    tab.className='tab'+(b.id===activeBattleId?' active':'');
+    tab.dataset.battletab=b.id;
+    tab.onclick=function(){switchBattle(b.id);};
+    tab.innerHTML='<span class="tab-icon">⚔</span>'
+      +'<span class="tab-title" ondblclick="renameBattle(\''+escH(b.id)+'\');event.stopPropagation()" title="Double-click to rename">'+escH(b.name)+'</span>'
+      +(battles.length>1?'<button class="tab-close" onclick="closeBattle(\''+b.id+'\',event)">×</button>':'');
+    tabbar.insertBefore(tab,anchor);
+  });
 }
 
 function newBattle(){
@@ -89,7 +103,7 @@ function newBattle(){
   activeBattleId=id;
   loadBattleState(b);
   activeTab='combat';
-  document.querySelectorAll('#dynamic-tabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#tabbar [data-tab]').forEach(t=>t.classList.remove('active'));
   renderBattleTabs();
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
   applyBattleToDOM();
@@ -102,7 +116,7 @@ function switchBattle(id){
   const b=currentBattle();if(!b)return;
   loadBattleState(b);
   activeTab='combat';
-  document.querySelectorAll('#dynamic-tabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#tabbar [data-tab]').forEach(t=>t.classList.remove('active'));
   renderBattleTabs();
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
   applyBattleToDOM();
@@ -119,7 +133,7 @@ function closeBattle(id,e){
     activeBattleId=battles[battles.length-1].id;
     loadBattleState(currentBattle());
     activeTab='combat';
-    document.querySelectorAll('#dynamic-tabs .tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#tabbar [data-tab]').forEach(t=>t.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
     renderBattleTabs();
     applyBattleToDOM();
@@ -591,7 +605,7 @@ function saveSession(){
   var tabs=[];
   var activeTabIdx=-1;
   var idx=0;
-  document.querySelectorAll('#dynamic-tabs .tab').forEach(function(tab){
+  document.querySelectorAll('#tabbar [data-tab]').forEach(function(tab){
     var id=tab.dataset.tab;
     if(id===activeTab)activeTabIdx=idx;
     var title=tab.querySelector('.tab-title').textContent;
@@ -671,7 +685,7 @@ function loadSession(){
         addTab(t.title,html,t.icon,t.rawMd||'');
       });
       if(state.activeTabIdx>=0){
-        var dynTabs=document.querySelectorAll('#dynamic-tabs .tab');
+        var dynTabs=document.querySelectorAll('#tabbar [data-tab]');
         if(dynTabs[state.activeTabIdx])switchTab(dynTabs[state.activeTabIdx].dataset.tab);
       }
     }
