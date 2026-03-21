@@ -691,6 +691,72 @@ body.toolkit-open .tab-panel{right:var(--toolkit-w);}
 .rule-edit-btn:hover{color:var(--gold);}
 .rule-del-btn:hover{color:var(--fear);}
 
+/* §NOTES_TAB ════════════════════════════════════════════════════
+   SESSION NOTES TAB
+════════════════════════════════════════════════ */
+.notes-scratchpad{padding:10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.notes-scratchpad-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:5px;}
+.notes-textarea{
+  width:100%;background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text-dim);padding:8px;border-radius:6px;font-size:13px;
+  font-family:'Crimson Pro',serif;resize:none;height:120px;line-height:1.5;
+}
+.notes-textarea:focus{outline:none;border-color:var(--gold-dim);}
+
+.notes-pinned-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.notes-pinned-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);}
+.notes-add-card-btn{
+  padding:3px 10px;border-radius:5px;font-size:12px;font-weight:700;
+  border:1px solid var(--border2);background:transparent;color:var(--text-muted);cursor:pointer;
+  transition:all .15s;
+}
+.notes-add-card-btn:hover{border-color:var(--gold-dim);color:var(--gold);}
+
+.notes-card-form{
+  padding:10px;background:var(--surface2);border-bottom:1px solid var(--border);
+  display:none;flex-shrink:0;
+}
+.notes-card-form.open{display:block;}
+.ncf-row{display:flex;gap:6px;margin-bottom:6px;}
+.ncf-select,.ncf-input,.ncf-textarea{
+  background:var(--surface3);border:1px solid var(--border2);color:var(--text);
+  padding:5px 8px;border-radius:5px;font-size:13px;font-family:'Crimson Pro',serif;
+}
+.ncf-select{flex-shrink:0;}
+.ncf-input{flex:1;}
+.ncf-textarea{width:100%;resize:none;height:52px;display:block;margin-bottom:6px;}
+.ncf-actions{display:flex;gap:6px;}
+.ncf-save,.ncf-cancel{
+  flex:1;padding:5px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;
+  border:1px solid var(--border2);background:var(--surface3);color:var(--text-dim);
+}
+.ncf-save{border-color:var(--green-dim);color:var(--green);}
+
+.notes-cards{flex:1;overflow-y:auto;padding:6px;}
+.note-card{
+  border:1px solid var(--border);border-radius:7px;padding:8px 10px;
+  margin-bottom:6px;position:relative;
+}
+.note-card.npc{border-left:3px solid var(--gold);}
+.note-card.threat{border-left:3px solid var(--fear);}
+.note-card.loot{border-left:3px solid var(--green);}
+.nc-type{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:3px;}
+.note-card.npc .nc-type{color:var(--gold);}
+.note-card.threat .nc-type{color:var(--fear);}
+.note-card.loot .nc-type{color:var(--green);}
+.nc-name{font-size:14px;font-weight:700;color:var(--text-dim);margin-bottom:4px;}
+.nc-notes{font-size:12px;color:var(--text-muted);line-height:1.5;white-space:pre-wrap;}
+.nc-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;}
+.nc-del,.nc-edit{
+  background:transparent;border:none;font-size:12px;cursor:pointer;color:var(--text-muted);
+  padding:2px 4px;
+}
+.nc-del:hover{color:var(--fear);}
+.nc-edit:hover{color:var(--gold);}
+
 /* §MOBILE_768 ═══════════════════════════════════════════════
    RESPONSIVE — MOBILE (≤768px)
 ═══════════════════════════════════════════════ */

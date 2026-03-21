@@ -862,6 +862,23 @@ document.addEventListener('click',function(e){
   }
   var delRuleBtn=e.target.closest('[data-ruledel]');
   if(delRuleBtn){deleteCustomRule(delRuleBtn.dataset.ruledel);return;}
+  var nedit=e.target.closest('[data-ncedit]');
+  if(nedit){
+    db_get('toolkit_notes',nedit.dataset.ncedit).then(function(rec){
+      if(!rec)return;
+      _noteEditId=rec.id;
+      var typeEl=document.getElementById('ncf-type');
+      var nameEl=document.getElementById('ncf-name');
+      var notesEl=document.getElementById('ncf-notes');
+      if(typeEl)typeEl.value=rec.type||'npc';
+      if(nameEl)nameEl.value=rec.name||'';
+      if(notesEl)notesEl.value=rec.notes||'';
+      document.getElementById('notes-card-form').classList.add('open');
+    });
+    return;
+  }
+  var ndel=e.target.closest('[data-ncdel]');
+  if(ndel){deleteNoteCard(ndel.dataset.ncdel);return;}
 });
 
 function toggleAbilitiesById(id,btn){
@@ -1246,6 +1263,105 @@ function deleteCustomRule(id){
   db_delete('toolkit_notes',id).then(function(){showToast('Rule deleted.');renderRulesList();});
 }
 
+
+// §NOTES_TAB ══════════════════════════════════════════════════════
+// SESSION NOTES TAB — scratchpad + pinned cards
+// ═════════════════════════════════════════════════════════════════
+var _notesSaveTimer=null;
+var _noteEditId=null;
+
+function renderNotesTab(){
+  var el=document.getElementById('tkp-notes');if(!el)return;
+  el.innerHTML=
+    '<div class="notes-scratchpad">'
+    +'<div class="notes-scratchpad-label">Scratchpad</div>'
+    +'<textarea class="notes-textarea" id="notes-textarea" placeholder="Notes…" oninput="scheduleNotesSave()"></textarea>'
+    +'</div>'
+    +'<div class="notes-pinned-header">'
+    +'<span class="notes-pinned-title">Pinned Cards</span>'
+    +'<button class="notes-add-card-btn" onclick="toggleNoteCardForm()">＋ Add Card</button>'
+    +'</div>'
+    +'<div class="notes-card-form" id="notes-card-form">'
+    +'<div class="ncf-row">'
+    +'<select class="ncf-select" id="ncf-type"><option value="npc">NPC</option><option value="threat">Threat</option><option value="loot">Loot</option></select>'
+    +'<input class="ncf-input" id="ncf-name" placeholder="Name…">'
+    +'</div>'
+    +'<textarea class="ncf-textarea" id="ncf-notes" placeholder="Notes, stats, description…"></textarea>'
+    +'<div class="ncf-actions">'
+    +'<button class="ncf-save" onclick="saveNoteCard()">Pin Card</button>'
+    +'<button class="ncf-cancel" onclick="toggleNoteCardForm()">Cancel</button>'
+    +'</div></div>'
+    +'<div class="notes-cards" id="notes-cards"></div>';
+  db_get('toolkit_notes','scratchpad').then(function(rec){
+    var ta=document.getElementById('notes-textarea');
+    if(ta&&rec)ta.value=rec.text||'';
+  }).catch(function(){});
+  renderNoteCards();
+}
+
+function scheduleNotesSave(){
+  clearTimeout(_notesSaveTimer);
+  _notesSaveTimer=setTimeout(function(){
+    var ta=document.getElementById('notes-textarea');if(!ta)return;
+    db_put('toolkit_notes',{id:'scratchpad',text:ta.value}).catch(function(){});
+  },500);
+}
+
+function toggleNoteCardForm(){
+  document.getElementById('notes-card-form').classList.toggle('open');
+}
+
+function saveNoteCard(prefill){
+  var type=prefill?prefill.type:(document.getElementById('ncf-type').value);
+  var name=prefill?prefill.name:(document.getElementById('ncf-name').value.trim());
+  var notes=prefill?prefill.notes:(document.getElementById('ncf-notes').value.trim());
+  if(!name){showToast('Name is required.');return;}
+  var rec={
+    id:prefill?undefined:(_noteEditId||Date.now()+'_'+Math.random().toString(36).substr(2,4)),
+    type:type,name:name,notes:notes
+  };
+  if(!rec.id)rec.id=Date.now()+'_'+Math.random().toString(36).substr(2,4);
+  if(!_noteEditId){rec.createdAt=new Date().toISOString();}
+  db_put('toolkit_notes',rec).then(function(){
+    showToast(_noteEditId?'Card updated.':'Card pinned.');
+    _noteEditId=null;
+    if(!prefill){
+      document.getElementById('ncf-name').value='';
+      document.getElementById('ncf-notes').value='';
+      document.getElementById('notes-card-form').classList.remove('open');
+    }
+    renderNoteCards();
+  });
+}
+
+function renderNoteCards(){
+  var el=document.getElementById('notes-cards');if(!el)return;
+  db_getAll('toolkit_notes').then(function(items){
+    var cards=(items||[]).filter(function(n){return n.id!=='scratchpad'&&!n._rule;});
+    if(!cards.length){el.innerHTML='<div style="padding:12px;font-size:13px;color:var(--text-muted)">No pinned cards yet.</div>';return;}
+    el.innerHTML=cards.map(function(c){
+      return '<div class="note-card '+escH(c.type)+'">'
+        +'<div class="nc-actions">'
+        +'<button class="nc-edit" data-ncedit="'+escH(c.id)+'">✎</button>'
+        +'<button class="nc-del" data-ncdel="'+escH(c.id)+'">×</button>'
+        +'</div>'
+        +'<div class="nc-type">'+escH(c.type)+'</div>'
+        +'<div class="nc-name">'+escH(c.name)+'</div>'
+        +(c.notes?'<div class="nc-notes">'+escH(c.notes)+'</div>':'')
+        +'</div>';
+    }).join('');
+  }).catch(function(){});
+}
+
+function deleteNoteCard(id){
+  if(!confirm('Remove this card?'))return;
+  db_delete('toolkit_notes',id).then(function(){renderNoteCards();showToast('Card removed.');});
+}
+
+// Pin a card from generators — exposed for use in Generators tab
+function pinToNotes(type,name,notes){
+  saveNoteCard({type:type,name:name,notes:notes||''});
+}
 
 // §INIT
 // ── Init ──────────────────────────────────────────────────
