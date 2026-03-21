@@ -570,7 +570,7 @@ function clearModal(){
   document.getElementById('cm-edit-id').value='';
 }
 
-function escH(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');}
 
 function addFeatRow(feat){
   var id='fr-'+(++featRowId);
@@ -1360,6 +1360,7 @@ function deleteNoteCard(id){
 
 // Pin a card from generators — exposed for use in Generators tab
 function pinToNotes(type,name,notes){
+  _noteEditId=null;
   saveNoteCard({type:type,name:name,notes:notes||''});
 }
 
