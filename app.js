@@ -1,53 +1,113 @@
 // §TAB_SYSTEM ═══════════════════════════════════════════════════════════
-// TAB SYSTEM
+// UNIFIED TAB SYSTEM (battle + lore tabs in one row, drag-to-reorder)
 // ═══════════════════════════════════════════════════════════
 let activeTab='combat';
 let tabCounter=0;
 
+// ── Drag-to-reorder ──
+var _dragSrcEl=null;
+function _addDragHandlers(tab){
+  tab.draggable=true;
+  tab.addEventListener('dragstart',function(e){
+    _dragSrcEl=tab;_tabDragging=true;
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain','');
+    requestAnimationFrame(()=>tab.classList.add('dragging'));
+  });
+  tab.addEventListener('dragend',function(){
+    tab.classList.remove('dragging');
+    document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.remove('drag-left','drag-right'));
+    _dragSrcEl=null;_tabDragging=false;
+  });
+  tab.addEventListener('dragover',function(e){
+    if(!_dragSrcEl||_dragSrcEl===tab)return;
+    e.preventDefault();e.stopPropagation();
+    const r=tab.getBoundingClientRect(),left=e.clientX<r.left+r.width/2;
+    document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.remove('drag-left','drag-right'));
+    tab.classList.add(left?'drag-left':'drag-right');
+  });
+  tab.addEventListener('dragleave',function(){tab.classList.remove('drag-left','drag-right');});
+  tab.addEventListener('drop',function(e){
+    e.preventDefault();e.stopPropagation();
+    if(!_dragSrcEl||_dragSrcEl===tab)return;
+    const r=tab.getBoundingClientRect(),before=e.clientX<r.left+r.width/2;
+    const srcId=_dragSrcEl.dataset.battletab||_dragSrcEl.dataset.tab;
+    const srcType=_dragSrcEl.dataset.battletab?'battle':'lore';
+    const tgtId=tab.dataset.battletab||tab.dataset.tab;
+    const tgtType=tab.dataset.battletab?'battle':'lore';
+    const si=tabOrder.findIndex(x=>x.id===srcId&&x.type===srcType);
+    const ti=tabOrder.findIndex(x=>x.id===tgtId&&x.type===tgtType);
+    if(si===-1||ti===-1)return;
+    const [moved]=tabOrder.splice(si,1);
+    const ni=tabOrder.findIndex(x=>x.id===tgtId&&x.type===tgtType);
+    tabOrder.splice(before?ni:ni+1,0,moved);
+    renderAllTabs();saveSession();
+  });
+}
+
+// ── Render all tabs into #all-tabs ──
+function renderAllTabs(){
+  const container=document.getElementById('all-tabs');
+  container.innerHTML='';
+  const showClose=battles.length>1;
+  tabOrder.forEach(function(entry){
+    const tab=document.createElement('div');
+    if(entry.type==='battle'){
+      const b=battles.find(x=>x.id===entry.id);if(!b)return;
+      tab.className='tab'+(activeTab==='combat'&&b.id===activeBattleId?' active':'');
+      tab.dataset.battletab=b.id;
+      tab.innerHTML='<span class="tab-icon">⚔</span>'
+        +'<span class="tab-title" ondblclick="renameBattle(\''+escH(b.id)+'\');event.stopPropagation()" title="Double-click to rename">'+escH(b.name)+'</span>'
+        +(showClose?'<button class="tab-close" onclick="closeBattle(\''+b.id+'\',event)">×</button>':'');
+      tab.addEventListener('click',function(){switchBattle(b.id);});
+    }else{
+      tab.className='tab'+(activeTab===entry.id?' active':'');
+      tab.dataset.tab=entry.id;
+      tab.innerHTML='<span class="tab-icon">'+escH(entry.icon)+'</span>'
+        +'<span class="tab-title" title="'+escH(entry.title)+'">'+escH(entry.title)+'</span>'
+        +'<button class="tab-close" onclick="closeTab(\''+entry.id+'\',event)">×</button>';
+      tab.addEventListener('click',function(){switchTab(entry.id);});
+    }
+    _addDragHandlers(tab);
+    container.appendChild(tab);
+  });
+}
+
+// ── Lore tab switch ──
 function switchTab(id){
   if(activeTab==='combat')saveBattleState();
   activeTab=id;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelector(`[data-tab="${id}"]`)?.classList.add('active');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));
+  document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
   saveSession();
 }
 
+// ── Add lore tab (creates panel + registers in tabOrder) ──
 function addTab(title,html,icon='📜',rawMd=''){
   const id='tab-'+(++tabCounter);
   tabRawMd[id]=rawMd;
-  // Tab button
-  const tab=document.createElement('div');
-  tab.className='tab';
-  tab.dataset.tab=id;
-  tab.style.display='inline-flex';  // Ensure tab appears inline
-  tab.innerHTML=`<span class="tab-icon">${icon}</span><span class="tab-title" title="${title}">${title}</span><button class="tab-close" onclick="closeTab('${id}',event)">×</button>`;
-  tab.addEventListener('click',()=>switchTab(id));
-  // Insert directly into #tabbar before #tab-upload (no wrapper div)
-  const uploadLabel=document.getElementById('tab-upload');
-  document.getElementById('tabbar').insertBefore(tab,uploadLabel);
-  // Panel
   const panel=document.createElement('div');
   panel.className='tab-panel';
   panel.id='panel-'+id;
-  panel.innerHTML=`<div class="md-panel"><div class="md-content">${html}</div></div>`;
+  panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
   document.getElementById('dynamic-panels').appendChild(panel);
+  tabOrder.push({type:'lore',id,title,icon});
+  renderAllTabs();
   switchTab(id);
   return id;
 }
 
+// ── Close lore tab ──
 function closeTab(id,e){
   e.stopPropagation();
-  document.querySelector(`.tab[data-tab="${id}"]`)?.remove();
+  tabOrder=tabOrder.filter(x=>!(x.type==='lore'&&x.id===id));
   document.getElementById('panel-'+id)?.remove();
   delete tabRawMd[id];
   if(activeTab===id){
-    // Return to the active battle tab
     activeTab='combat';
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
-    renderBattleTabs();
   }
-  saveSession();
+  renderAllTabs();saveSession();
 }
 
 // §BATTLE_TABS ═══════════════════════════════════════════════════════════
@@ -78,33 +138,18 @@ function applyBattleToDOM(){
   statusBar();
 }
 
-function renderBattleTabs(){
-  const container=document.getElementById('battle-tabs');
-  container.innerHTML='';
-  battles.forEach(function(b){
-    const tab=document.createElement('div');
-    tab.className='tab'+(b.id===activeBattleId?' active':'');
-    tab.dataset.battletab=b.id;
-    tab.onclick=function(){switchBattle(b.id);};
-    tab.innerHTML='<span class="tab-icon">⚔</span>'
-      +'<span class="tab-title" ondblclick="renameBattle(\''+escH(b.id)+'\');event.stopPropagation()" title="Double-click to rename">'+escH(b.name)+'</span>'
-      +(battles.length>1?'<button class="tab-close" onclick="closeBattle(\''+b.id+'\',event)">×</button>':'');
-    container.appendChild(tab);
-  });
-}
-
 function newBattle(){
   saveBattleState();
   const num=++battleTabCounter;
   const id='battle-'+Date.now();
   const b={id,name:'Battle '+num,battleStarted:false,round:1,playerCount,cart:[],combatants:[],iid:0};
   battles.push(b);
+  tabOrder.push({type:'battle',id});
   activeBattleId=id;
   loadBattleState(b);
   activeTab='combat';
-  document.querySelectorAll('#tabbar [data-tab]').forEach(t=>t.classList.remove('active'));
-  renderBattleTabs();
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  renderAllTabs();
   applyBattleToDOM();
   saveSession();
 }
@@ -115,9 +160,10 @@ function switchBattle(id){
   const b=currentBattle();if(!b)return;
   loadBattleState(b);
   activeTab='combat';
-  document.querySelectorAll('#tabbar [data-tab]').forEach(t=>t.classList.remove('active'));
-  renderBattleTabs();
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  document.querySelectorAll('#all-tabs .tab').forEach(t=>{
+    t.classList.toggle('active',t.dataset.battletab===id);
+  });
   applyBattleToDOM();
   saveSession();
 }
@@ -128,18 +174,15 @@ function closeBattle(id,e){
   const b=battles.find(x=>x.id===id);
   if(b&&b.battleStarted&&!confirm(`Close "${b.name}"? This battle is in progress.`))return;
   battles=battles.filter(x=>x.id!==id);
+  tabOrder=tabOrder.filter(x=>!(x.type==='battle'&&x.id===id));
   if(activeBattleId===id){
     activeBattleId=battles[battles.length-1].id;
     loadBattleState(currentBattle());
     activeTab='combat';
-    document.querySelectorAll('#tabbar [data-tab]').forEach(t=>t.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
-    renderBattleTabs();
     applyBattleToDOM();
-  } else {
-    renderBattleTabs();
   }
-  saveSession();
+  renderAllTabs();saveSession();
 }
 
 function renameBattle(id){
@@ -152,8 +195,7 @@ function renameBattle(id){
 function commitBattleRename(id,inp){
   const b=battles.find(x=>x.id===id);if(!b)return;
   if(!inp.dataset.cancelled){const v=inp.value.trim();if(v)b.name=v;}
-  renderBattleTabs();
-  saveSession();
+  renderAllTabs();saveSession();
 }
 
 // §MARKDOWN ═══════════════════════════════════════════════════════════
@@ -201,10 +243,11 @@ function renderMd(raw,title){
   return html;
 }
 
-// Drag and drop
-document.addEventListener('dragover',e=>{e.preventDefault();document.getElementById('drop-overlay').classList.add('active');});
-document.addEventListener('dragleave',e=>{if(e.relatedTarget===null)document.getElementById('drop-overlay').classList.remove('active');});
+// Drag and drop — file drops only (tab drags skip via _tabDragging flag)
+document.addEventListener('dragover',e=>{if(_tabDragging)return;e.preventDefault();document.getElementById('drop-overlay').classList.add('active');});
+document.addEventListener('dragleave',e=>{if(_tabDragging)return;if(e.relatedTarget===null)document.getElementById('drop-overlay').classList.remove('active');});
 document.addEventListener('drop',e=>{
+  if(_tabDragging)return;
   e.preventDefault();
   document.getElementById('drop-overlay').classList.remove('active');
   const files=[...e.dataTransfer.files].filter(f=>f.name.match(/\.(md|markdown)$/i));
@@ -282,8 +325,10 @@ let playerCount=4,bpTotal=14,bpSpent=0;
 let cart=[],combatants=[],filterType='all',filterSearch='',iid=0;
 let expanded=new Set();
 var tabRawMd={};
+var tabOrder=[];   // [{type:'battle'|'lore', id, title?, icon?}] — unified display order
 var _restoring=false;
 var SESSION_KEY='motherTree_session';
+var _tabDragging=false; // true while a tab is being drag-reordered
 // Battle tab management
 var battles=[],activeBattleId=null,battleTabCounter=0;
 
@@ -600,24 +645,17 @@ function deleteCustomAdv(id,e){
 // ═══════════════════════════════════════════════════════════
 function saveSession(){
   if(_restoring)return;
-  saveBattleState(); // sync current globals → active battle object before persisting
-  var tabs=[];
-  var activeTabIdx=-1;
-  var idx=0;
-  document.querySelectorAll('#tabbar [data-tab]').forEach(function(tab){
-    var id=tab.dataset.tab;
-    if(id===activeTab)activeTabIdx=idx;
-    var title=tab.querySelector('.tab-title').textContent;
-    var icon=tab.querySelector('.tab-icon').textContent;
-    tabs.push({title:title,icon:icon,rawMd:tabRawMd[id]||''});
-    idx++;
-  });
+  saveBattleState();
+  // Build loreTabs map: id → rawMd
+  var loreTabs={};
+  tabOrder.forEach(function(e){if(e.type==='lore')loreTabs[e.id]=tabRawMd[e.id]||'';});
   var state={
     battles:battles,
     activeBattleId:activeBattleId,
     battleTabCounter:battleTabCounter,
-    activeTabIdx:activeTabIdx,
-    tabs:tabs
+    activeTab:activeTab,
+    tabOrder:tabOrder,
+    loreTabs:loreTabs
   };
   try{localStorage.setItem(SESSION_KEY,JSON.stringify(state));}catch(e){}
 }
@@ -637,8 +675,8 @@ function loadSession(){
     if(!raw){_restoring=false;return;}
     var state=JSON.parse(raw);
 
+    // ── Restore battles ──
     if(state.battles&&state.battles.length){
-      // ── New multi-battle format ──
       battleTabCounter=state.battleTabCounter||state.battles.length;
       battles=state.battles.map(function(b){
         return {
@@ -650,10 +688,9 @@ function loadSession(){
         };
       });
       activeBattleId=state.activeBattleId||battles[0].id;
-      renderBattleTabs();
       loadBattleState(currentBattle());
     } else if(state.playerCount!=null){
-      // ── Legacy single-battle format ──
+      // Legacy single-battle format
       battleTabCounter=1;
       battles=[{
         id:'battle-1',name:'Battle 1',
@@ -663,11 +700,10 @@ function loadSession(){
         combatants:(state.combatants||[]).map(_restoreCombatant)
       }];
       activeBattleId='battle-1';
-      renderBattleTabs();
       loadBattleState(currentBattle());
     }
 
-    // Apply battle UI state
+    // Apply battle UI state to DOM
     if(battles.length){
       document.getElementById('player-count').value=playerCount;
       document.getElementById('btn-begin').style.display=battleStarted?'none':'';
@@ -677,18 +713,63 @@ function loadSession(){
       if(battleStarted)document.getElementById('round-num').textContent=round;
     }
 
-    // Restore lore tabs
-    if(state.tabs&&state.tabs.length){
-      state.tabs.forEach(function(t){
-        var html=renderMd(t.rawMd||'',t.title);
-        addTab(t.title,html,t.icon,t.rawMd||'');
+    // ── Restore tab order and lore panels ──
+    if(state.tabOrder){
+      // New format: tabOrder includes both battle and lore entries
+      tabOrder=state.tabOrder;
+      tabOrder.forEach(function(entry){
+        if(entry.type==='lore'){
+          var rawMd=(state.loreTabs&&state.loreTabs[entry.id])||'';
+          tabRawMd[entry.id]=rawMd;
+          var num=parseInt((entry.id||'').split('-')[1]||0);
+          if(num>tabCounter)tabCounter=num;
+          var html=renderMd(rawMd,entry.title);
+          var panel=document.createElement('div');
+          panel.className='tab-panel';panel.id='panel-'+entry.id;
+          panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+          document.getElementById('dynamic-panels').appendChild(panel);
+        }
       });
-      if(state.activeTabIdx>=0){
-        var dynTabs=document.querySelectorAll('#tabbar [data-tab]');
-        if(dynTabs[state.activeTabIdx])switchTab(dynTabs[state.activeTabIdx].dataset.tab);
+    } else if(state.tabs&&state.tabs.length){
+      // Legacy format: build tabOrder from battles + flat tabs array
+      tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
+      state.tabs.forEach(function(t,i){
+        var id='tab-'+(i+1);
+        if(i+1>tabCounter)tabCounter=i+1;
+        tabRawMd[id]=t.rawMd||'';
+        tabOrder.push({type:'lore',id:id,title:t.title,icon:t.icon||'📜'});
+        var html=renderMd(t.rawMd||'',t.title);
+        var panel=document.createElement('div');
+        panel.className='tab-panel';panel.id='panel-'+id;
+        panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+        document.getElementById('dynamic-panels').appendChild(panel);
+      });
+    } else {
+      // No lore tabs — just battles
+      tabOrder=battles.map(function(b){return {type:'battle',id:b.id};});
+    }
+
+    renderAllTabs();
+
+    // ── Restore active tab ──
+    var savedActive=state.activeTab||'combat';
+    if(savedActive!=='combat'&&tabRawMd[savedActive]){
+      activeTab=savedActive;
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+savedActive));
+      document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===savedActive));
+    } else {
+      activeTab='combat';
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+      // Legacy activeTabIdx fallback
+      if(state.activeTabIdx>=0&&state.tabs&&state.tabs[state.activeTabIdx]){
+        var lid='tab-'+(state.activeTabIdx+1);
+        if(tabRawMd[lid]){activeTab=lid;
+          document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+lid));
+          document.querySelectorAll('#all-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===lid));
+        }
       }
     }
-  }catch(e){}
+  }catch(e){console.error('loadSession:',e);}
   _restoring=false;
 }
 
@@ -779,7 +860,8 @@ loadCustomAdv();
     const b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
     battles.push(b);
     activeBattleId='battle-1';
-    renderBattleTabs();
+    tabOrder=[{type:'battle',id:'battle-1'}];
+    renderAllTabs();
   }
   updateBP();buildFilters();renderList();
   if(battleStarted){renderCombat();}else{renderStage();}

@@ -26,7 +26,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
   scrollbar-width:none;padding-top:5px;
 }
 #tabbar::-webkit-scrollbar{display:none;}
-#battle-tabs{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;}
+#all-tabs{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;}
 
 .tab{
   display:flex;align-items:center;gap:7px;
@@ -61,31 +61,23 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
 }
 .tab-close:hover{background:rgba(224,90,106,.2);color:var(--fear);}
 
-/* New battle button */
-#new-battle-btn{
-  display:flex;align-items:center;padding:0 10px;height:100%;
-  background:transparent;border:none;border-right:1px solid var(--border);
+/* New tab buttons (battle + lore) */
+#new-battle-btn,#new-lore-btn{
+  display:flex;align-items:center;gap:5px;padding:0 10px;height:100%;
+  background:transparent;border:none;border-left:1px solid var(--border);
   color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;
   transition:color .15s,background .15s;flex-shrink:0;white-space:nowrap;
   font-family:'Crimson Pro',serif;
 }
+#new-battle-btn{border-left:none;border-right:1px solid var(--border);}
 #new-battle-btn:hover{color:var(--hope);background:rgba(99,102,241,.08);}
+#new-lore-btn:hover{color:var(--gold);background:rgba(212,168,67,.06);}
+#new-lore-btn svg{flex-shrink:0;}
 
-/* Separator between battle tabs and lore tabs */
-.tab-separator{
-  width:1px;background:var(--border);margin:8px 4px;flex-shrink:0;
-}
-
-/* Upload button */
-#tab-upload{
-  display:flex;align-items:center;gap:6px;padding:0 14px;
-  cursor:pointer;color:var(--text-muted);font-size:12px;
-  border-left:1px solid var(--border);border-right:1px solid var(--border);
-  transition:all .15s;
-  font-family:'Crimson Pro',serif;white-space:nowrap;flex-shrink:0;
-}
-#tab-upload:hover{color:var(--gold);background:rgba(212,168,67,.06);}
-#tab-upload-input{display:none;}
+/* Drag-to-reorder styles */
+.tab.dragging{opacity:0.35;cursor:grabbing;}
+.tab.drag-left{box-shadow:-3px 0 0 0 var(--hope);}
+.tab.drag-right{box-shadow:3px 0 0 0 var(--hope);}
 
 /* GM title badge */
 #gm-badge{
@@ -569,7 +561,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Crimso
   body{overscroll-behavior:none;} /* prevent iOS bounce scroll */
   #gm-badge{display:none;}
   .tab-title{max-width:90px;}
-  #tab-upload span:last-of-type{display:none;}
+  #new-lore-btn span{display:none;}
 
   /* Sidebar becomes a slide-in overlay drawer */
   #combat-tab-panel{position:relative;}
