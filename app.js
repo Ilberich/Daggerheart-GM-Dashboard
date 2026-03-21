@@ -645,6 +645,85 @@ function db_migrate(){
   });
 }
 
+// §EXPORT_IMPORT ═══════════════════════════════════════════════════════
+// EXPORT / IMPORT JSON BACKUP
+// ═══════════════════════════════════════════════════════════════════════
+function openSettingsModal(){document.getElementById('settings-modal-bg').classList.add('open');}
+function closeSettingsModal(){
+  document.getElementById('settings-modal-bg').classList.remove('open');
+  document.getElementById('sm-status').textContent='';
+}
+
+function exportData(){
+  Promise.all([
+    db_get('combat_session','state'),
+    db_getAll('custom_adversaries'),
+    db_getAll('toolkit_notes'),
+    db_getAll('generator_library'),
+    db_getAll('saved_encounters')
+  ]).then(function(results){
+    var payload={
+      version:1,
+      exported_at:new Date().toISOString(),
+      combat_session:results[0]||null,
+      custom_adversaries:results[1]||[],
+      toolkit_notes:results[2]||[],
+      generator_library:results[3]||[],
+      saved_encounters:results[4]||[]
+    };
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='mother-tree-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    document.getElementById('sm-status').textContent='Export complete.';
+  }).catch(function(e){
+    document.getElementById('sm-status').textContent='Export failed: '+e.message;
+  });
+}
+
+function importData(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var payload;
+    try{payload=JSON.parse(e.target.result);}catch(err){
+      document.getElementById('sm-status').textContent='Invalid backup file — could not import.';
+      input.value='';return;
+    }
+    // Validate
+    if(payload.version!==1||
+       !['combat_session','custom_adversaries','toolkit_notes','generator_library']
+         .some(function(k){return k in payload;})){
+      document.getElementById('sm-status').textContent='Invalid backup file — could not import.';
+      input.value='';return;
+    }
+    if(!confirm('This will overwrite your current data. Your existing data will be replaced. Continue?')){
+      input.value='';return;
+    }
+    var stores=['combat_session','custom_adversaries','toolkit_notes','generator_library','saved_encounters'];
+    var clears=stores.map(function(s){return db_clear(s);});
+    Promise.all(clears).then(function(){
+      var writes=[];
+      if(payload.combat_session)
+        writes.push(db_put('combat_session',Object.assign({key:'state'},payload.combat_session)));
+      (payload.custom_adversaries||[]).forEach(function(a){writes.push(db_put('custom_adversaries',a));});
+      (payload.toolkit_notes||[]).forEach(function(n){writes.push(db_put('toolkit_notes',n));});
+      (payload.generator_library||[]).forEach(function(g){writes.push(db_put('generator_library',g));});
+      (payload.saved_encounters||[]).forEach(function(enc){writes.push(db_put('saved_encounters',enc));});
+      return Promise.all(writes);
+    }).then(function(){
+      location.reload();
+    }).catch(function(err){
+      document.getElementById('sm-status').textContent='Import failed: '+err.message;
+    });
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
 // §CUSTOM_ADV ═══════════════════════════════════════════════════════════
 // CUSTOM ADVERSARY SYSTEM
 // ═══════════════════════════════════════════════════════════

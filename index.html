@@ -31,6 +31,7 @@
   <button id="new-battle-btn" onclick="newBattle()" title="New battle tab">⚔ +</button>
   <button id="new-lore-btn" onclick="document.getElementById('tab-upload-input').click()" title="Add lore tab from .md file"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z"/></svg> +</button>
   <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple style="display:none" onchange="handleFileUpload(this.files)">
+  <button id="settings-btn" onclick="openSettingsModal()" title="Export / Import data">⚙</button>
   <div id="gm-badge">
     <span>THE MOTHER TREE</span>
     <strong>GM INTERFACE</strong>
@@ -184,6 +185,27 @@
       <input type="hidden" id="cm-edit-id">
       <button type="button" class="cm-btn cm-btn-cancel" id="cm-cancel-btn">Cancel</button>
       <button type="button" class="cm-btn cm-btn-save" id="cm-save-btn">Save Adversary</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS / EXPORT-IMPORT MODAL -->
+<div id="settings-modal-bg" onclick="if(event.target===this)closeSettingsModal()">
+  <div id="settings-modal">
+    <div class="sm-header">
+      <span class="sm-title">⚙ Data Management</span>
+      <button class="sm-close" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="sm-body">
+      <p class="sm-desc">Export your data as a JSON backup or restore from a previous export. Import overwrites all current data.</p>
+      <div class="sm-actions">
+        <button class="sm-btn sm-btn-export" onclick="exportData()">⬇ Export JSON</button>
+        <label class="sm-btn sm-btn-import">
+          ⬆ Import JSON
+          <input type="file" accept=".json" style="display:none" onchange="importData(this)">
+        </label>
+      </div>
+      <div id="sm-status" class="sm-status"></div>
     </div>
   </div>
 </div>
