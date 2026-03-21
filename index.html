@@ -86,7 +86,21 @@
         <button class="topbar-btn btn-add-more" id="btn-add-more" onclick="openSidebar()" style="display:none">+ Adversaries</button>
         <button class="topbar-btn btn-primary btn-begin" id="btn-begin" onclick="beginBattle()">▶ Begin Battle</button>
         <button class="topbar-btn btn-danger" id="btn-reset" onclick="resetBattle()" style="display:none">↺ Reset</button>
+        <button class="topbar-btn btn-save-enc" id="btn-save-enc" onclick="openSaveEncounterPrompt()" style="display:none" title="Save this encounter for later">💾 Save Encounter</button>
       </div>
+      <div id="save-enc-prompt" style="display:none">
+  <div class="sep-row">
+    <span class="sep-label">Save as:</span>
+    <input class="sep-input" id="sep-name" placeholder="Encounter name…" maxlength="60">
+    <button class="sep-btn sep-confirm" onclick="confirmSaveEncounter()">Save</button>
+    <button class="sep-btn sep-cancel" onclick="closeSaveEncounterPrompt()">Cancel</button>
+  </div>
+  <div id="sep-link" class="sep-link-row" style="display:none">
+    <span class="sep-link-label">Link:</span>
+    <code class="sep-link-code" id="sep-link-code"></code>
+    <button class="sep-copy-btn" onclick="copySepLink()">Copy</button>
+  </div>
+</div>
       <div id="combat-area">
         <div class="empty-state" id="empty-state">
           <div class="empty-icon">🗡</div>
@@ -100,6 +114,12 @@
         <div class="status-item">Defeated: <span id="status-defeated">0</span></div>
         <div class="status-item">Budget remaining: <span id="status-bp">14</span> pts</div>
       </div>
+      <div id="saved-encounters-section" class="saved-enc-section">
+  <button class="saved-enc-toggle" onclick="toggleSavedEncSection()">
+    <span>📋 Saved Encounters</span><span id="saved-enc-chevron">▼</span>
+  </button>
+  <div id="saved-enc-list" style="display:none"></div>
+</div>
     </div>
 
   </div>

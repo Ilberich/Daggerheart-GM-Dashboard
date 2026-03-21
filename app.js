@@ -433,6 +433,7 @@ function renderStage(){
   if(!battleStarted&&cart.length===0){grid.style.display='none';empty.style.display='flex';return;}
   empty.style.display='none';grid.style.display='grid';
   grid.innerHTML=cart.map(c=>`<div class="combat-card" style="border-style:dashed;opacity:.75"><button class="card-dismiss" onclick="removeFromCart(${c._iid})">✕</button><div class="card-header"><div class="card-name">${c.name}</div><span class="card-type-badge tc-${c.type}">${ICONS[c.type]} ${cap(c.type)}</span></div><div class="card-meta"><span class="card-stat">DC <span>${c.dc}</span></span><span class="card-stat">HP <span>${c.hp}</span></span><span class="card-stat">ST <span>${c.st}</span></span><span class="card-stat">ATK <span>${c.atk}</span></span></div><div style="font-size:12px;color:var(--text-muted);font-style:italic;text-align:center">Queued — hit ▶ Begin Battle</div></div>`).join('');
+  updateSaveEncBtn();
 }
 // §COMBAT_RENDER
 function renderCombat(){
@@ -723,6 +724,156 @@ function importData(input){
   reader.readAsText(file);
   input.value='';
 }
+
+// §SAVED_ENCOUNTERS ════════════════════════════════════════════════
+// SAVED ENCOUNTERS — SAVE, LOAD, MANAGE
+// ═══════════════════════════════════════════════════════════════════
+
+// Show/hide Save button based on cart contents (call from renderStage)
+function updateSaveEncBtn(){
+  var btn=document.getElementById('btn-save-enc');
+  if(btn)btn.style.display=(cart.length>0&&!battleStarted)?'':'none';
+}
+
+function openSaveEncounterPrompt(){
+  var prompt=document.getElementById('save-enc-prompt');
+  var linkRow=document.getElementById('sep-link');
+  if(!prompt)return;
+  document.getElementById('sep-name').value='Encounter '+(Date.now()%10000);
+  linkRow.style.display='none';
+  prompt.style.display='';
+  document.getElementById('sep-name').select();
+}
+function closeSaveEncounterPrompt(){
+  var prompt=document.getElementById('save-enc-prompt');
+  if(prompt)prompt.style.display='none';
+}
+
+function confirmSaveEncounter(){
+  var name=document.getElementById('sep-name').value.trim();
+  if(!name)return;
+  var enc={
+    id:'encounter_'+Date.now(),
+    name:name,
+    adversaries:JSON.parse(JSON.stringify(cart)),
+    savedAt:new Date().toISOString()
+  };
+  db_put('saved_encounters',enc).then(function(){
+    var linkCode='[[encounter:'+name+']]';
+    var codeEl=document.getElementById('sep-link-code');
+    if(codeEl)codeEl.textContent=linkCode;
+    document.getElementById('sep-link').style.display='';
+    renderSavedEncounterList();
+    showToast('"'+name+'" saved.');
+  }).catch(function(e){showToast('Save failed: '+e.message);});
+}
+
+function copySepLink(){
+  var code=document.getElementById('sep-link-code');
+  if(!code)return;
+  navigator.clipboard.writeText(code.textContent).then(function(){showToast('Link copied!');});
+}
+
+var _savedEncOpen=false;
+function toggleSavedEncSection(){
+  _savedEncOpen=!_savedEncOpen;
+  var list=document.getElementById('saved-enc-list');
+  var chev=document.getElementById('saved-enc-chevron');
+  if(list)list.style.display=_savedEncOpen?'block':'none';
+  if(chev)chev.textContent=_savedEncOpen?'▲':'▼';
+  if(_savedEncOpen)renderSavedEncounterList();
+}
+
+function renderSavedEncounterList(){
+  db_getAll('saved_encounters').then(function(encs){
+    var list=document.getElementById('saved-enc-list');if(!list)return;
+    if(!encs||!encs.length){list.innerHTML='<div style="padding:10px 16px;font-size:13px;color:var(--text-muted)">No saved encounters yet.</div>';return;}
+    list.innerHTML=encs.map(function(enc){
+      var date=enc.savedAt?enc.savedAt.slice(0,10):'';
+      var count=(enc.adversaries||[]).length;
+      return '<div class="saved-enc-row">'
+        +'<span class="saved-enc-name">'+escH(enc.name)+'</span>'
+        +'<span class="saved-enc-meta">'+count+' adv · '+date+'</span>'
+        +'<button class="saved-enc-load" data-loadenc="'+escH(enc.id)+'">Load</button>'
+        +'<button class="saved-enc-del" data-delenc="'+escH(enc.id)+'">Delete</button>'
+        +'</div>';
+    }).join('');
+  }).catch(function(){});
+}
+
+function loadSavedEncounter(id){
+  db_get('saved_encounters',id).then(function(enc){
+    if(!enc){showToast('Encounter not found.');return;}
+    _doLoadEncounter(enc);
+  });
+}
+
+function _doLoadEncounter(enc){
+  var hasContent=cart.length>0||combatants.length>0;
+  if(!hasContent){
+    _applyEncounter(enc,'replace');
+    return;
+  }
+  // Show confirmation with three options
+  var modal=document.createElement('div');
+  modal.className='enc-load-modal-bg';
+  modal.innerHTML='<div class="enc-load-modal">'
+    +'<div class="elm-title">Load "'+escH(enc.name)+'"</div>'
+    +'<div class="elm-body">There are already adversaries in this encounter.</div>'
+    +'<div class="elm-actions">'
+    +'<button class="elm-btn elm-replace">Replace</button>'
+    +'<button class="elm-btn elm-add">Add to Battle</button>'
+    +'<button class="elm-btn elm-cancel">Cancel</button>'
+    +'</div></div>';
+  document.body.appendChild(modal);
+  modal.querySelector('.elm-replace').onclick=function(){modal.remove();_applyEncounter(enc,'replace');};
+  modal.querySelector('.elm-add').onclick=function(){modal.remove();_applyEncounter(enc,'add');};
+  modal.querySelector('.elm-cancel').onclick=function(){modal.remove();};
+}
+
+function _applyEncounter(enc,mode){
+  if(mode==='replace'){
+    battleStarted=false;round=1;cart=[];combatants=[];
+    var beginBtn=document.getElementById('btn-begin');
+    var resetBtn=document.getElementById('btn-reset');
+    var addMoreBtn=document.getElementById('btn-add-more');
+    var roundBadge=document.getElementById('round-badge');
+    if(beginBtn)beginBtn.style.display='';
+    if(resetBtn)resetBtn.style.display='none';
+    if(addMoreBtn)addMoreBtn.style.display='none';
+    if(roundBadge)roundBadge.style.display='none';
+  }
+  var advs=JSON.parse(JSON.stringify(enc.adversaries||[]));
+  if(mode==='add'&&battleStarted){
+    advs.forEach(function(a){addCombatant(a);});
+  } else {
+    advs.forEach(function(a){
+      cart.push(Object.assign({},a,{_iid:++iid}));
+    });
+    syncBP();renderList();renderStage();statusBar();saveSession();
+  }
+  showToast('"'+enc.name+'" loaded.');
+  closeSaveEncounterPrompt();
+}
+
+function deleteSavedEncounter(id){
+  db_get('saved_encounters',id).then(function(enc){
+    if(!enc)return;
+    if(!confirm('Delete "'+enc.name+'"?'))return;
+    db_delete('saved_encounters',id).then(function(){
+      renderSavedEncounterList();
+      showToast('Encounter deleted.');
+    });
+  });
+}
+
+// Event delegation for saved-encounters load/delete buttons
+document.addEventListener('click',function(e){
+  var loadBtn=e.target.closest('[data-loadenc]');
+  if(loadBtn){loadSavedEncounter(loadBtn.dataset.loadenc);return;}
+  var delBtn=e.target.closest('[data-delenc]');
+  if(delBtn){deleteSavedEncounter(delBtn.dataset.delenc);return;}
+});
 
 // §CUSTOM_ADV ═══════════════════════════════════════════════════════════
 // CUSTOM ADVERSARY SYSTEM
