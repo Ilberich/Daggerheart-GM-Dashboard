@@ -9,8 +9,10 @@
 <title>The Mother Tree — GM Interface</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<!-- All dependencies are local — no internet required.
-     Fonts: Crimson Pro → Georgia → serif | Cinzel → serif | JetBrains Mono → monospace (fallbacks already in CSS) -->
+<!-- Fonts: loaded from Google Fonts when online; fallback to Georgia/serif offline -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap">
 <script src="vendor/marked-compat.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -29,6 +31,7 @@
   <button id="new-battle-btn" onclick="newBattle()" title="New battle tab">⚔ +</button>
   <button id="new-lore-btn" onclick="document.getElementById('tab-upload-input').click()" title="Add lore tab from .md file"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z"/></svg> +</button>
   <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple style="display:none" onchange="handleFileUpload(this.files)">
+  <button id="settings-btn" onclick="openSettingsModal()" title="Export / Import data">⚙</button>
   <div id="gm-badge">
     <span>THE MOTHER TREE</span>
     <strong>GM INTERFACE</strong>
@@ -83,7 +86,21 @@
         <button class="topbar-btn btn-add-more" id="btn-add-more" onclick="openSidebar()" style="display:none">+ Adversaries</button>
         <button class="topbar-btn btn-primary btn-begin" id="btn-begin" onclick="beginBattle()">▶ Begin Battle</button>
         <button class="topbar-btn btn-danger" id="btn-reset" onclick="resetBattle()" style="display:none">↺ Reset</button>
+        <button class="topbar-btn btn-save-enc" id="btn-save-enc" onclick="openSaveEncounterPrompt()" style="display:none" title="Save this encounter for later">💾 Save Encounter</button>
       </div>
+      <div id="save-enc-prompt" style="display:none">
+  <div class="sep-row">
+    <span class="sep-label">Save as:</span>
+    <input class="sep-input" id="sep-name" placeholder="Encounter name…" maxlength="60">
+    <button class="sep-btn sep-confirm" onclick="confirmSaveEncounter()">Save</button>
+    <button class="sep-btn sep-cancel" onclick="closeSaveEncounterPrompt()">Cancel</button>
+  </div>
+  <div id="sep-link" class="sep-link-row" style="display:none">
+    <span class="sep-link-label">Link:</span>
+    <code class="sep-link-code" id="sep-link-code"></code>
+    <button class="sep-copy-btn" onclick="copySepLink()">Copy</button>
+  </div>
+</div>
       <div id="combat-area">
         <div class="empty-state" id="empty-state">
           <div class="empty-icon">🗡</div>
@@ -97,6 +114,12 @@
         <div class="status-item">Defeated: <span id="status-defeated">0</span></div>
         <div class="status-item">Budget remaining: <span id="status-bp">14</span> pts</div>
       </div>
+      <div id="saved-encounters-section" class="saved-enc-section">
+  <button class="saved-enc-toggle" onclick="toggleSavedEncSection()">
+    <span>📋 Saved Encounters</span><span id="saved-enc-chevron">▼</span>
+  </button>
+  <div id="saved-enc-list" style="display:none"></div>
+</div>
     </div>
 
   </div>
@@ -182,6 +205,27 @@
       <input type="hidden" id="cm-edit-id">
       <button type="button" class="cm-btn cm-btn-cancel" id="cm-cancel-btn">Cancel</button>
       <button type="button" class="cm-btn cm-btn-save" id="cm-save-btn">Save Adversary</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS / EXPORT-IMPORT MODAL -->
+<div id="settings-modal-bg" onclick="if(event.target===this)closeSettingsModal()">
+  <div id="settings-modal">
+    <div class="sm-header">
+      <span class="sm-title">⚙ Data Management</span>
+      <button class="sm-close" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="sm-body">
+      <p class="sm-desc">Export your data as a JSON backup or restore from a previous export. Import overwrites all current data.</p>
+      <div class="sm-actions">
+        <button class="sm-btn sm-btn-export" onclick="exportData()">⬇ Export JSON</button>
+        <label class="sm-btn sm-btn-import">
+          ⬆ Import JSON
+          <input type="file" accept=".json" style="display:none" onchange="importData(this)">
+        </label>
+      </div>
+      <div id="sm-status" class="sm-status"></div>
     </div>
   </div>
 </div>

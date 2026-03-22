@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rules Reference Panel — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #080b0f;
+    --surface:   #0e1218;
+    --card:      #131820;
+    --border:    #1e2535;
+    --border-hi: #2e3a50;
+    --text:      #c8d4e0;
+    --text-dim:  #6a7a8a;
+    --text-faint:#3a4555;
+    --hope:      #d4a843;
+    --hope-dim:  #7a5f20;
+    --fear:      #c0392b;
+    --green:     #2d6a4f;
+    --green-hi:  #52b788;
+    --arcane:    #6e56a8;
+    --arcane-hi: #a585e0;
+    --font-display: 'Cinzel', serif;
+    --font-body:    'Crimson Pro', serif;
+    --font-mono:    'JetBrains Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 32px;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(46,58,80,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(45,106,79,0.12) 0%, transparent 50%);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 32px;
+  }
+
+  /* ── Dashboard Shell ─────────────────────────────────── */
+  .shell {
+    display: flex;
+    height: 640px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03);
+  }
+
+  /* ── Tab Bar ─────────────────────────────────────────── */
+  .tabbar {
+    background: #070a0d;
+    border-bottom: 1px solid var(--border);
+    padding: 0 14px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 42px;
+    flex-shrink: 0;
+    grid-column: 1/-1;
+  }
+
+  /* ── Outer grid ──────────────────────────────────────── */
+  .layout {
+    display: grid;
+    grid-template-columns: 180px 1fr 280px 16px;
+    grid-template-rows: 42px 1fr;
+    width: 100%;
+  }
+
+  /* Tabbar spans all */
+  .tabbar { grid-column: 1/-1; grid-row: 1; }
+
+  /* ── Arsenal ─────────────────────────────────────────── */
+  .arsenal {
+    background: #07090c;
+    border-right: 1px solid var(--border);
+    grid-row: 2;
+    padding: 12px 10px;
+    overflow: hidden;
+  }
+  .arsenal-title {
+    font-family: var(--font-display);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--hope);
+    margin-bottom: 10px;
+  }
+  .adv-entry {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    margin-bottom: 3px;
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .adv-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(239,68,68,0.15);
+    color: #ef4444;
+  }
+  .adv-badge.b { background: rgba(249,115,22,0.15); color: #f97316; }
+  .adv-badge.h { background: rgba(167,139,250,0.15); color: #a78bfa; }
+
+  /* ── Combat ──────────────────────────────────────────── */
+  .combat {
+    grid-row: 2;
+    padding: 16px;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    opacity: 0.55;
+  }
+  .round-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .round-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+  }
+  .round-num {
+    font-family: var(--font-display);
+    font-size: 26px;
+    color: var(--hope);
+    line-height: 1;
+  }
+  .combatant-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .cc-name {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: #ef4444;
+    margin-bottom: 4px;
+  }
+  .dots { display: flex; gap: 4px; margin-top: 4px; }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #1e2535;
+    border: 1px solid #2e3a50;
+  }
+  .dot.filled { background: var(--hope); border-color: var(--hope-dim); }
+  .dot.red.filled { background: #ef4444; border-color: #c0392b; }
+  .dot-label { font-family: var(--font-mono); font-size: 8px; color: var(--text-faint); margin-right: 4px; }
+  .combat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* ── Toolkit Panel ───────────────────────────────────── */
+  .toolkit {
+    grid-row: 2;
+    background: #090c11;
+    border-left: 1px solid var(--border-hi);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Subtle arcane glow on toolkit border */
+  .toolkit::before {
+    content: '';
+    position: absolute;
+    left: -1px; top: 0; bottom: 0; width: 1px;
+    background: linear-gradient(to bottom, transparent 0%, var(--arcane) 40%, var(--green-hi) 70%, transparent 100%);
+    opacity: 0.4;
+  }
+
+  /* Mini-tabs */
+  .tk-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: #07090d;
+    flex-shrink: 0;
+  }
+  .tk-tab {
+    flex: 1;
+    padding: 9px 2px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+  }
+  .tk-tab.active {
+    color: var(--hope);
+    border-bottom-color: var(--hope);
+    background: #09111a;
+  }
+  .tk-tab:hover:not(.active) { color: var(--text-dim); }
+
+  /* Rules content */
+  .tk-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .tk-body::-webkit-scrollbar { width: 3px; }
+  .tk-body::-webkit-scrollbar-track { background: transparent; }
+  .tk-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+  .search-wrap { position: relative; }
+  .search-wrap input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border-hi);
+    border-radius: 5px;
+    padding: 8px 10px 8px 30px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-wrap input:focus { border-color: var(--arcane-hi); }
+  .search-wrap input::placeholder { color: var(--text-faint); }
+  .search-icon {
+    position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: var(--text-faint); pointer-events: none;
+  }
+
+  /* Category pills */
+  .cat-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    color: var(--text-faint);
+    cursor: pointer;
+    transition: all 0.12s;
+    user-select: none;
+  }
+  .pill.active, .pill:hover { border-color: var(--hope-dim); color: var(--hope); background: rgba(212,168,67,0.08); }
+
+  /* Rule cards */
+  .rule-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .rule-card:hover { border-color: var(--border-hi); }
+  .rule-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    cursor: pointer;
+    gap: 8px;
+  }
+  .rule-name {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--hope);
+    flex: 1;
+  }
+  .rule-tag {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
+  }
+  .rule-tag.action { background: rgba(82,183,136,0.15); color: var(--green-hi); }
+  .rule-tag.condition { background: rgba(110,86,168,0.15); color: var(--arcane-hi); }
+  .rule-tag.gm { background: rgba(212,168,67,0.12); color: var(--hope); }
+  .rule-tag.custom { background: rgba(99,102,241,0.15); color: #818cf8; }
+  .rule-chevron { font-size: 10px; color: var(--text-faint); transition: transform 0.2s; }
+  .rule-card.open .rule-chevron { transform: rotate(90deg); }
+  .rule-body {
+    display: none;
+    padding: 0 10px 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 0;
+  }
+  .rule-card.open .rule-body { display: block; }
+  .rule-body p {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-top: 8px;
+  }
+  .rule-body em { color: var(--hope); font-style: italic; }
+  .rule-body strong { color: var(--text); font-weight: 600; }
+
+  /* User-added badge */
+  .edit-hint {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-faint);
+    text-align: center;
+    padding: 6px;
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+    transition: color 0.12s;
+  }
+  .edit-hint:hover { color: var(--arcane-hi); }
+
+  /* ── Collapse handle ─────────────────────────────────── */
+  .collapse-handle {
+    grid-row: 2;
+    background: #07090c;
+    border-left: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    color: var(--text-faint);
+    transition: color 0.15s, background 0.15s;
+  }
+  .collapse-handle:hover { color: var(--hope); background: #09111a; }
+
+  /* Tab buttons (top bar) */
+  .main-tab {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 8px 14px;
+    border-radius: 5px 5px 0 0;
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+  }
+  .main-tab.active {
+    background: var(--surface);
+    border-color: var(--border-hi);
+    border-bottom-color: var(--surface);
+    color: var(--hope);
+  }
+  .main-tab:not(.active) { color: var(--text-faint); }
+  .app-title {
+    font-family: var(--font-display);
+    font-size: 11px;
+    color: var(--green-hi);
+    letter-spacing: 0.15em;
+    padding: 0 12px 8px 0;
+    margin-right: 6px;
+    border-right: 1px solid var(--border);
+    align-self: center;
+  }
+  .theme-btn {
+    margin-left: auto;
+    align-self: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-hi);
+    color: var(--arcane-hi);
+    background: rgba(110,86,168,0.08);
+    cursor: pointer;
+    letter-spacing: 0.06em;
+  }
+</style>
+</head>
+<body>
+
+<h1>Section 2 of 5 · Rules Reference Panel</h1>
+<p class="subtitle">Searchable, categorized, expandable — built into the Toolkit Panel. Edit to add your own entries.</p>
+
+<div class="shell">
+  <div class="layout">
+
+    <!-- Tab Bar -->
+    <div class="tabbar">
+      <div class="app-title">🌲 THE MOTHER TREE</div>
+      <div class="main-tab active">⚔ Battle 1</div>
+      <div class="main-tab">📖 Lore</div>
+      <div class="main-tab" style="color:var(--text-faint);font-size:9px;letter-spacing:0.05em;">+ Battle</div>
+      <div class="theme-btn">◉ Theme</div>
+    </div>
+
+    <!-- Arsenal (dimmed) -->
+    <div class="arsenal">
+      <div class="arsenal-title">Arsenal</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:10px;color:var(--text-faint);margin-bottom:8px;font-family:var(--font-mono);">🔍 filter...</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);margin-bottom:6px;">Players: ⊖ 4 ⊕  ·  BP: 12 rem</div>
+      <div class="adv-entry">Cave Ogre <span class="adv-badge">5pt</span></div>
+      <div class="adv-entry">Bear <span class="adv-badge b">4pt</span></div>
+      <div class="adv-entry">Pirate Raiders <span class="adv-badge h">2pt</span></div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:center;margin-top:8px;">52 more...</div>
+    </div>
+
+    <!-- Combat (dimmed) -->
+    <div class="combat">
+      <div class="round-bar">
+        <div>
+          <div class="round-label">ROUND</div>
+          <div class="round-num">3</div>
+        </div>
+        <div style="margin-left:auto;font-family:var(--font-display);font-size:9px;letter-spacing:0.12em;padding:5px 12px;border:1px solid var(--green);border-radius:4px;color:var(--green-hi);">BATTLE ACTIVE</div>
+      </div>
+      <div class="combat-grid">
+        <div class="combatant-card">
+          <div class="cc-name">CAVE OGRE</div>
+          <div class="dots">
+            <span class="dot-label">HP</span>
+            <div class="dot filled red"></div><div class="dot filled red"></div><div class="dot filled red"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <div class="dots">
+            <span class="dot-label">ST</span>
+            <div class="dot filled"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+        </div>
+        <div class="combatant-card">
+          <div class="cc-name" style="color:#f97316;">BEAR</div>
+          <div class="dots">
+            <span class="dot-label">HP</span>
+            <div class="dot filled red"></div><div class="dot filled red"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <div class="dots">
+            <span class="dot-label">ST</span>
+            <div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-faint);text-align:center;margin-top:auto;">combat tracker unchanged ↑</div>
+    </div>
+
+    <!-- Toolkit Panel — RULES TAB ACTIVE -->
+    <div class="toolkit">
+      <div class="tk-tabs">
+        <div class="tk-tab active" onclick="switchTab(this,'rules')">🔍 RULES</div>
+        <div class="tk-tab" onclick="switchTab(this,'notes')">📝 NOTES</div>
+        <div class="tk-tab" onclick="switchTab(this,'gen')">🎲 GEN</div>
+        <div class="tk-tab" onclick="switchTab(this,'sfx')">🎵 SFX</div>
+      </div>
+
+      <!-- Rules Body -->
+      <div class="tk-body" id="tab-rules">
+        <!-- Search -->
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input type="text" id="rules-search" placeholder="grapple, prone, fear move..." oninput="filterRules(this.value)" />
+        </div>
+
+        <!-- Category pills -->
+        <div class="cat-pills" id="cat-pills">
+          <div class="pill active" data-cat="all" onclick="filterCat(this)">ALL</div>
+          <div class="pill" data-cat="action" onclick="filterCat(this)">ACTIONS</div>
+          <div class="pill" data-cat="condition" onclick="filterCat(this)">CONDITIONS</div>
+          <div class="pill" data-cat="gm" onclick="filterCat(this)">GM MOVES</div>
+          <div class="pill" data-cat="custom" onclick="filterCat(this)">CUSTOM</div>
+        </div>
+
+        <!-- Rule entries -->
+        <div id="rules-list">
+
+          <div class="rule-card open" data-tags="grapple restrain action" data-cat="action">
+            <div class="rule-header" onclick="toggleRule(this)">
+              <span class="rule-name">GRAPPLE</span>
+              <span class="rule-tag action">ACTION</span>
+              <span class="rule-chevron">›</span>
+            </div>
+            <div class="rule-body">
+              <p>Make an <em>Agility roll</em> against the target's <em>Agility DC</em>. On a success, the target gains the <strong>Restrained</strong> condition. While Restrained, they cannot move and have a −2 to all rolls. They may spend their action to attempt to escape (Agility vs your Agility DC).</p>
+            </div>
+          </div>
+
+          <div class="rule-card" data-tags="prone knocked down fall action" data-cat="action">
+            <div class="rule-header" onclick="toggleRule(this)">
+              <span class="rule-name">PRONE / STAND UP</span>
+              <span class="rule-tag action">ACTION</span>
+              <span class="rule-chevron">›</span>
+            </div>
+            <div class="rule-body">
+              <p>A creature knocked <em>prone</em> is at −2 to attack rolls. Attacks made against them from adjacent squares gain +2. Standing up costs their <strong>full movement</strong> for that turn — they cannot also move.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" data-tags="vulnerable condition" data-cat="condition">
+            <div class="rule-header" onclick="toggleRule(this)">
+              <span class="rule-name">VULNERABLE</span>
+              <span class="rule-tag condition">CONDITION</span>
+              <span class="rule-chevron">›</span>
+            </div>
+            <div class="rule-body">
+              <p>All damage taken is increased by the <em>severity threshold</em>. When a Vulnerable creature takes damage, treat the result as one severity level higher (Minor → Severe, Severe → Critical).</p>
+            </div>
+          </div>
+
+          <div class="rule-card" data-tags="fear gm move spend" data-cat="gm">
+            <div class="rule-header" onclick="toggleRule(this)">
+              <span class="rule-name">SPEND FEAR (GM MOVES)</span>
+              <span class="rule-tag gm">GM MOVE</span>
+              <span class="rule-chevron">›</span>
+            </div>
+            <div class="rule-body">
+              <p>Spend <em>Fear tokens</em> to activate adversary abilities marked with ✦. Each spend costs 1 Fear unless noted. Fear accrues when players roll with Fear, or from environment triggers. Typical GM moves: <strong>Escalate</strong> (bring in reinforcements), <strong>Reveal</strong> (spring a trap), <strong>Strike</strong> (adversary attacks out of turn).</p>
+            </div>
+          </div>
+
+          <div class="rule-card" data-tags="hidden skulk stealth" data-cat="condition">
+            <div class="rule-header" onclick="toggleRule(this)">
+              <span class="rule-name">HIDDEN</span>
+              <span class="rule-tag condition">CONDITION</span>
+              <span class="rule-chevron">›</span>
+            </div>
+            <div class="rule-body">
+              <p>A <em>Hidden</em> creature cannot be targeted by attacks. On their turn, they may attack — doing so reveals them. They can remain hidden if they succeed on a <em>Stealth roll</em> (DC set by enemy Instinct).</p>
+            </div>
+          </div>
+
+          <div class="rule-card" data-tags="custom dodge disengage" data-cat="custom">
+            <div class="rule-header" onclick="toggleRule(this)">
+              <span class="rule-name">DISENGAGE (HOUSE RULE)</span>
+              <span class="rule-tag custom">CUSTOM</span>
+              <span class="rule-chevron">›</span>
+            </div>
+            <div class="rule-body">
+              <p>Spend your action to disengage. Until the start of your next turn, movement does not trigger opportunity attacks. <em>(Added by GM — not in base rulebook.)</em></p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="edit-hint" onclick="alert('Add custom rule entry')">＋ Add custom rule entry</div>
+      </div>
+
+      <!-- Notes placeholder (hidden) -->
+      <div class="tk-body" id="tab-notes" style="display:none;">
+        <div style="font-family:var(--font-display);font-size:9px;letter-spacing:0.12em;color:var(--hope);margin-bottom:8px;">SESSION NOTES</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:var(--font-body);font-size:12px;color:var(--text-dim);min-height:200px;">This tab is shown in the next section →</div>
+      </div>
+
+      <!-- Gen placeholder (hidden) -->
+      <div class="tk-body" id="tab-gen" style="display:none;">
+        <div style="font-family:var(--font-display);font-size:9px;letter-spacing:0.12em;color:var(--hope);margin-bottom:8px;">GENERATORS</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:var(--font-body);font-size:12px;color:var(--text-dim);">This tab is shown in section 4 →</div>
+      </div>
+
+      <!-- SFX placeholder (hidden) -->
+      <div class="tk-body" id="tab-sfx" style="display:none;">
+        <div style="font-family:var(--font-display);font-size:9px;letter-spacing:0.12em;color:var(--hope);margin-bottom:8px;">SOUNDBOARD</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:var(--font-body);font-size:12px;color:var(--text-dim);">This tab is shown in section 5 →</div>
+      </div>
+
+    </div>
+
+    <!-- Collapse handle -->
+    <div class="collapse-handle" title="Collapse toolkit">‹</div>
+
+  </div>
+</div>
+
+<p style="margin-top:20px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);">
+  The Rules panel ships with common Daggerheart rules pre-loaded (grapple, prone, conditions, GM moves, etc.)
+  and lets you add custom entries — like house rules. Clicking a rule expands it. Category pills filter the list. The search box filters as you type.
+</p>
+<p style="margin-top:10px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);">
+  <strong style="color:var(--text);">Does this Rules Reference design feel right?</strong> Any changes to layout, how rules are organized, or what content should be pre-loaded?
+</p>
+
+<script>
+function toggleRule(header) {
+  const card = header.closest('.rule-card');
+  card.classList.toggle('open');
+}
+
+function switchTab(el, id) {
+  document.querySelectorAll('.tk-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['rules','notes','gen','sfx'].forEach(name => {
+    const el = document.getElementById('tab-' + name);
+    if (el) el.style.display = name === id ? 'flex' : 'none';
+    if (el && name === id) el.style.flexDirection = 'column';
+  });
+}
+
+function filterRules(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.rule-card').forEach(card => {
+    const tags = card.dataset.tags || '';
+    const name = card.querySelector('.rule-name')?.textContent.toLowerCase() || '';
+    const body = card.querySelector('.rule-body')?.textContent.toLowerCase() || '';
+    card.style.display = (!q || tags.includes(q) || name.includes(q) || body.includes(q)) ? '' : 'none';
+  });
+}
+
+function filterCat(pill) {
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  const cat = pill.dataset.cat;
+  document.querySelectorAll('.rule-card').forEach(card => {
+    card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
+  });
+  // reset search
+  document.getElementById('rules-search').value = '';
+}
+</script>
+</body>
+</html>

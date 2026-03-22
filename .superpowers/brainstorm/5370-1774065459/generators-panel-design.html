@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generators Panel — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #080b0f; --surface: #0e1218; --card: #131820;
+    --border: #1e2535; --border-hi: #2e3a50;
+    --text: #c8d4e0; --text-dim: #6a7a8a; --text-faint: #3a4555;
+    --hope: #d4a843; --hope-dim: #7a5f20;
+    --fear: #c0392b; --green: #2d6a4f; --green-hi: #52b788;
+    --arcane: #6e56a8; --arcane-hi: #a585e0;
+    --font-display: 'Cinzel', serif;
+    --font-body: 'Crimson Pro', serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.6; padding: 32px; min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(46,58,80,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(45,106,79,0.12) 0%, transparent 50%);
+  }
+  h1 { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.18em; color: var(--text-dim); margin-bottom: 6px; }
+  .subtitle { font-family: var(--font-body); font-size: 14px; color: var(--text-dim); font-style: italic; margin-bottom: 32px; }
+
+  .shell { display: flex; height: 640px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03); }
+  .layout { display: grid; grid-template-columns: 180px 1fr 280px 16px; grid-template-rows: 42px 1fr; width: 100%; }
+  .tabbar { background: #070a0d; border-bottom: 1px solid var(--border); padding: 0 14px; display: flex; align-items: flex-end; gap: 2px; height: 42px; grid-column: 1/-1; grid-row: 1; }
+  .arsenal { background: #07090c; border-right: 1px solid var(--border); grid-row: 2; padding: 12px 10px; overflow: hidden; opacity: 0.4; }
+  .arsenal-title { font-family: var(--font-display); font-size: 9px; letter-spacing: 0.2em; color: var(--hope); margin-bottom: 10px; }
+  .adv-entry { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; margin-bottom: 3px; font-size: 11px; color: var(--text-dim); }
+  .combat { grid-row: 2; padding: 16px; background: var(--surface); opacity: 0.4; display: flex; flex-direction: column; gap: 12px; }
+  .round-num { font-family: var(--font-display); font-size: 26px; color: var(--hope); }
+  .round-label { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.14em; color: var(--text-dim); }
+  .combatant-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .cc-name { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; color: #ef4444; margin-bottom: 4px; }
+  .dots { display: flex; gap: 4px; margin-top: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #1e2535; border: 1px solid #2e3a50; }
+  .dot.filled { background: var(--hope); border-color: var(--hope-dim); }
+  .dot.red.filled { background: #ef4444; border-color: #c0392b; }
+  .dot-label { font-family: var(--font-mono); font-size: 8px; color: var(--text-faint); margin-right: 4px; }
+  .combat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toolkit { grid-row: 2; background: #090c11; border-left: 1px solid var(--border-hi); display: flex; flex-direction: column; position: relative; }
+  .toolkit::before { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 1px; background: linear-gradient(to bottom, transparent 0%, var(--arcane) 40%, var(--green-hi) 70%, transparent 100%); opacity: 0.4; }
+  .tk-tabs { display: flex; border-bottom: 1px solid var(--border); background: #07090d; flex-shrink: 0; }
+  .tk-tab { flex: 1; padding: 9px 2px; text-align: center; font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tk-tab.active { color: var(--hope); border-bottom-color: var(--hope); background: #09111a; }
+  .tk-body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .tk-body::-webkit-scrollbar { width: 3px; }
+  .tk-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+  .collapse-handle { grid-row: 2; background: #07090c; border-left: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: var(--text-faint); }
+  .main-tab { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.1em; padding: 8px 14px; border-radius: 5px 5px 0 0; border: 1px solid transparent; cursor: pointer; }
+  .main-tab.active { background: var(--surface); border-color: var(--border-hi); border-bottom-color: var(--surface); color: var(--hope); }
+  .main-tab:not(.active) { color: var(--text-faint); }
+  .app-title { font-family: var(--font-display); font-size: 11px; color: var(--green-hi); letter-spacing: 0.15em; padding: 0 12px 8px 0; margin-right: 6px; border-right: 1px solid var(--border); align-self: center; }
+  .theme-btn { margin-left: auto; align-self: center; font-family: var(--font-mono); font-size: 9px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border-hi); color: var(--arcane-hi); background: rgba(110,86,168,0.08); cursor: pointer; }
+
+  /* ── Generator UI ─────────────────────────────────────── */
+  .gen-section-label {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .gen-block { display: flex; flex-direction: column; gap: 5px; }
+
+  .gen-result {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 36px;
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+  .gen-result:hover { border-color: var(--border-hi); }
+  .gen-result-text {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text);
+    flex: 1;
+    line-height: 1.3;
+  }
+  .gen-result-text.placeholder { color: var(--text-faint); font-style: italic; font-size: 11px; }
+  .roll-btn {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-hi);
+    color: var(--hope);
+    background: rgba(212,168,67,0.07);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .roll-btn:hover { background: rgba(212,168,67,0.15); border-color: var(--hope); }
+
+  .sub-controls { display: flex; gap: 4px; flex-wrap: wrap; }
+  .sub-pill {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    color: var(--text-faint);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .sub-pill.active { border-color: var(--hope-dim); color: var(--hope); background: rgba(212,168,67,0.08); }
+
+  .pin-to-notes {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-faint);
+    text-align: right;
+    cursor: pointer;
+    padding-right: 2px;
+    transition: color 0.12s;
+  }
+  .pin-to-notes:hover { color: var(--green-hi); }
+
+  /* Encounter seed card */
+  .encounter-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--arcane);
+    border-radius: 5px;
+    padding: 9px 11px;
+  }
+  .encounter-card .hook {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+    font-style: italic;
+  }
+  .encounter-card .twist {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--arcane-hi);
+    margin-top: 5px;
+    letter-spacing: 0.04em;
+  }
+  .encounter-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Section 4 of 5 · Generators</h1>
+<p class="subtitle">NPC names, loot, encounter seeds — roll once and keep moving.</p>
+
+<div class="shell">
+  <div class="layout">
+
+    <div class="tabbar">
+      <div class="app-title">🌲 THE MOTHER TREE</div>
+      <div class="main-tab active">⚔ Battle 1</div>
+      <div class="main-tab">📖 Lore</div>
+      <div class="main-tab" style="color:var(--text-faint);font-size:9px;">+ Battle</div>
+      <div class="theme-btn">◉ Theme</div>
+    </div>
+
+    <div class="arsenal">
+      <div class="arsenal-title">Arsenal</div>
+      <div class="adv-entry">Cave Ogre</div>
+      <div class="adv-entry">Bear</div>
+      <div class="adv-entry">Raiders</div>
+    </div>
+
+    <div class="combat">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div><div class="round-label">ROUND</div><div class="round-num">3</div></div>
+        <div style="margin-left:auto;font-family:var(--font-display);font-size:9px;padding:5px 12px;border:1px solid var(--green);border-radius:4px;color:var(--green-hi);">BATTLE ACTIVE</div>
+      </div>
+      <div class="combat-grid">
+        <div class="combatant-card"><div class="cc-name">CAVE OGRE</div><div class="dots"><span class="dot-label">HP</span><div class="dot filled red"></div><div class="dot filled red"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+        <div class="combatant-card"><div class="cc-name" style="color:#f97316;">BEAR</div><div class="dots"><span class="dot-label">HP</span><div class="dot filled red"></div><div class="dot filled red"></div><div class="dot"></div><div class="dot"></div></div></div>
+      </div>
+    </div>
+
+    <!-- Toolkit — GENERATORS TAB -->
+    <div class="toolkit">
+      <div class="tk-tabs">
+        <div class="tk-tab">🔍 RULES</div>
+        <div class="tk-tab">📝 NOTES</div>
+        <div class="tk-tab active">🎲 GEN</div>
+        <div class="tk-tab">🎵 SFX</div>
+      </div>
+
+      <div class="tk-body">
+
+        <!-- NPC Name -->
+        <div class="gen-block">
+          <div class="gen-section-label">👤 NPC Name</div>
+          <div class="sub-controls">
+            <div class="sub-pill active" onclick="setActive(this)">Any</div>
+            <div class="sub-pill" onclick="setActive(this)">Human</div>
+            <div class="sub-pill" onclick="setActive(this)">Elf</div>
+            <div class="sub-pill" onclick="setActive(this)">Dwarf</div>
+            <div class="sub-pill" onclick="setActive(this)">Faun</div>
+          </div>
+          <div class="gen-result" onclick="rollName()">
+            <span class="gen-result-text" id="name-result">Seravyn Holloway</span>
+            <button class="roll-btn" onclick="event.stopPropagation();rollName()">⟳ Roll</button>
+          </div>
+          <div class="pin-to-notes" onclick="pinResult('name')">📌 pin to notes</div>
+        </div>
+
+        <!-- Loot -->
+        <div class="gen-block">
+          <div class="gen-section-label">💎 Loot</div>
+          <div class="sub-controls">
+            <div class="sub-pill active" onclick="setActive(this)">Minor</div>
+            <div class="sub-pill" onclick="setActive(this)">Major</div>
+            <div class="sub-pill" onclick="setActive(this)">Vault</div>
+            <div class="sub-pill" onclick="setActive(this)">Trinket</div>
+          </div>
+          <div class="gen-result" onclick="rollLoot()">
+            <span class="gen-result-text" id="loot-result">Carved bone ring — glows faintly near undead</span>
+            <button class="roll-btn" onclick="event.stopPropagation();rollLoot()">⟳ Roll</button>
+          </div>
+          <div class="pin-to-notes" onclick="pinResult('loot')">📌 pin to notes</div>
+        </div>
+
+        <!-- Encounter Seed -->
+        <div class="gen-block">
+          <div class="gen-section-label">⚡ Encounter Seed</div>
+          <div id="encounter-card" class="encounter-card">
+            <div class="hook" id="enc-hook">"A merchant is arguing with a guard at the gate — neither will back down, and a crowd is forming."</div>
+            <div class="twist" id="enc-twist">TWIST ▸ The merchant is carrying something illegal. The guard knows.</div>
+          </div>
+          <div class="encounter-footer">
+            <div class="pin-to-notes" onclick="pinResult('encounter')">📌 pin to notes</div>
+            <button class="roll-btn" onclick="rollEncounter()">⟳ New Seed</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="collapse-handle">‹</div>
+  </div>
+</div>
+
+<p style="margin-top:20px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);">
+  Three generators, each with a <strong style="color:var(--text);">Pin to Notes</strong> button — so a rolled NPC name or loot drop immediately becomes a pinned card in your session notes without switching tabs.
+  The encounter seed gives a hook <em>and</em> a twist, so you're never just handed a flat scenario.
+</p>
+<p style="margin-top:10px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);">
+  <strong style="color:var(--text);">Does this feel right?</strong> Are there other generator types you'd want (location names, weather, rumors)? Should encounter seeds be Daggerheart-specific (using Fear/Hope framing)?
+</p>
+
+<script>
+const names = [
+  "Seravyn Holloway","Bram Kettwick","Thessaly Vorne","Orvyn Ashcroft",
+  "Lirien Dusk","Caelan Morrow","Petra Brackwall","Solen Finch",
+  "Wren Aldgate","Tomas Greywood","Isolde Marr","Davin Coldbrook",
+  "Nyx Fallow","Corvin Brast","Aelys Thornwood","Hemlock Fain"
+];
+const loot = [
+  "Carved bone ring — glows faintly near undead",
+  "Vial of silver dust (3 uses) — blinds on hit",
+  "Worn compass that always points toward the nearest secret",
+  "Flask of deepwood gin — heals 1 Stress when shared",
+  "Small obsidian mirror — shows your reflection one second delayed",
+  "Rope of woven moongrass — never frays, holds 800lbs",
+  "Ink-black feather — anything written with it cannot be burned",
+  "Cracked hourglass where the sand flows upward",
+  "Copper coin stamped with a face no one recognizes",
+  "Gloves of the Undertaker — +1 to Finesse, smell faintly of ash"
+];
+const hooks = [
+  '"A merchant is arguing with a guard at the gate — neither will back down, and a crowd is forming."',
+  '"The village well has run dry overnight. Villagers found claw marks leading into the dark water."',
+  '"A wounded courier collapses at the party\'s feet, clutching a sealed letter marked BURN AFTER READING."',
+  '"Three children claim to have seen the same dream. They draw the same tower. No tower exists on any map."',
+  '"A feast is underway in the keep — but the host hasn\'t been seen in two days."',
+  '"Someone has been leaving flowers on graves — graves that haven\'t been dug yet."'
+];
+const twists = [
+  "TWIST ▸ The merchant is carrying something illegal. The guard knows.",
+  "TWIST ▸ The claws came from inside the well, going out.",
+  "TWIST ▸ The courier is already dead. They just don't know it yet.",
+  "TWIST ▸ One of the children drew it from memory. They've been there.",
+  "TWIST ▸ The host is fine. The guests are the problem.",
+  "TWIST ▸ The flowers are from someone in the party's past."
+];
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function rollName() {
+  const el = document.getElementById('name-result');
+  el.classList.remove('placeholder');
+  el.textContent = rand(names);
+}
+function rollLoot() {
+  const el = document.getElementById('loot-result');
+  el.classList.remove('placeholder');
+  el.textContent = rand(loot);
+}
+function rollEncounter() {
+  const i = Math.floor(Math.random() * hooks.length);
+  document.getElementById('enc-hook').textContent = hooks[i];
+  document.getElementById('enc-twist').textContent = twists[i];
+}
+function setActive(pill) {
+  const parent = pill.closest('.sub-controls');
+  parent.querySelectorAll('.sub-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+}
+function pinResult(type) {
+  const labels = { name: '👤 NPC', loot: '💎 Loot', encounter: '📌 Note' };
+  alert('Pinned to Session Notes as ' + (labels[type] || 'Note') + '!');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Environment Generator v2 — Rulebook Accurate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #080b0f; --surface: #0e1218; --card: #131820;
+    --border: #1e2535; --border-hi: #2e3a50;
+    --text: #c8d4e0; --text-dim: #6a7a8a; --text-faint: #3a4555;
+    --hope: #d4a843; --hope-dim: #7a5f20;
+    --fear: #c0392b; --fear-dim: #7a1a10;
+    --green: #2d6a4f; --green-hi: #52b788;
+    --arcane: #6e56a8; --arcane-hi: #a585e0;
+    --font-display: 'Cinzel', serif;
+    --font-body: 'Crimson Pro', serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--font-body);
+    padding: 32px; min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(46,58,80,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(45,106,79,0.12) 0%, transparent 50%);
+  }
+  h1 { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.18em; color: var(--text-dim); margin-bottom: 6px; }
+  .subtitle { font-family: var(--font-body); font-size: 14px; color: var(--text-dim); font-style: italic; margin-bottom: 28px; }
+
+  .demo { display: grid; grid-template-columns: 330px 1fr; gap: 24px; align-items: start; }
+
+  /* ── Toolkit Panel ───────────────────────────────────── */
+  .toolkit {
+    background: #090c11; border: 1px solid var(--border-hi);
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    display: flex; flex-direction: column;
+  }
+  .tk-tabs { display: flex; border-bottom: 1px solid var(--border); background: #07090d; }
+  .tk-tab { flex: 1; padding: 9px 2px; text-align: center; font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tk-tab.active { color: var(--hope); border-bottom-color: var(--hope); background: #09111a; }
+  .tk-body { overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; max-height: 900px; }
+  .tk-body::-webkit-scrollbar { width: 3px; }
+  .tk-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+  .section-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.14em; color: var(--text-faint); text-transform: uppercase; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+
+  /* Setting seed chips */
+  .chip-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    font-family: var(--font-mono); font-size: 9px; padding: 4px 9px;
+    border-radius: 5px; border: 1px solid var(--border); color: var(--text-faint);
+    cursor: pointer; transition: all 0.12s;
+  }
+  .chip.active { border-color: var(--green-hi); color: var(--green-hi); background: rgba(82,183,136,0.1); }
+  .chip:hover:not(.active) { border-color: var(--border-hi); color: var(--text-dim); }
+
+  /* Quick row */
+  .quick-row { display: flex; gap: 6px; align-items: center; }
+  .field-select {
+    font-family: var(--font-mono); font-size: 10px;
+    background: var(--card); border: 1px solid var(--border-hi);
+    color: var(--text); border-radius: 4px; padding: 5px 7px;
+    outline: none; cursor: pointer; flex: 1;
+  }
+  .generate-btn {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+    padding: 6px 14px; border-radius: 4px;
+    border: 1px solid var(--green); color: var(--green-hi);
+    background: rgba(82,183,136,0.1); cursor: pointer; transition: all 0.12s;
+  }
+  .generate-btn:hover { background: rgba(82,183,136,0.2); }
+
+  /* Advanced expander */
+  .adv-toggle { font-family: var(--font-mono); font-size: 9px; color: var(--arcane-hi); cursor: pointer; display: flex; align-items: center; gap: 5px; user-select: none; }
+  .adv-chevron { transition: transform 0.2s; }
+  .adv-toggle.open .adv-chevron { transform: rotate(90deg); }
+  .adv-panel { background: rgba(110,86,168,0.06); border: 1px solid rgba(110,86,168,0.2); border-radius: 6px; padding: 10px; display: none; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .adv-panel.open { display: flex; }
+  .field-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.1em; color: var(--text-faint); margin-bottom: 3px; }
+  .field-input { font-family: var(--font-mono); font-size: 10px; background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 5px 8px; outline: none; width: 100%; }
+  .field-input:focus { border-color: var(--arcane-hi); }
+  .mini-chips { display: flex; gap: 3px; flex-wrap: wrap; }
+  .mini-chip { font-family: var(--font-mono); font-size: 8px; padding: 3px 7px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-faint); cursor: pointer; transition: all 0.1s; }
+  .mini-chip.active { border-color: var(--arcane-hi); color: var(--arcane-hi); background: rgba(110,86,168,0.1); }
+  .adv-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* ── Stat Block ──────────────────────────────────────── */
+  .stat-block { background: var(--card); border: 1px solid var(--green); border-radius: 6px; overflow: hidden; }
+  .sb-header { background: rgba(45,106,79,0.2); border-bottom: 1px solid var(--border); padding: 10px 12px; }
+  .sb-name-input {
+    font-family: var(--font-display); font-size: 14px; letter-spacing: 0.08em;
+    color: var(--green-hi); background: transparent; border: none;
+    border-bottom: 1px dashed rgba(82,183,136,0.3); outline: none; width: 100%;
+    padding: 1px 0; margin-bottom: 3px;
+  }
+  .sb-name-input:focus { border-bottom-color: var(--green-hi); }
+  .sb-tier-type { font-family: var(--font-body); font-size: 12px; font-style: italic; color: var(--text-dim); }
+  .sb-desc-input { font-family: var(--font-body); font-size: 12px; font-style: italic; color: var(--text-dim); background: transparent; border: none; outline: none; width: 100%; margin-top: 4px; }
+  .sb-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .sb-stat-row {
+    background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 7px 10px;
+    display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;
+  }
+  .sb-stat { display: flex; flex-direction: column; gap: 1px; }
+  .sb-stat-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.1em; color: var(--text-faint); }
+  .sb-stat-val { font-family: var(--font-display); font-size: 14px; color: var(--hope); line-height: 1.1; }
+  .sb-stat-val.editable {
+    background: transparent; border: none; border-bottom: 1px dashed var(--border);
+    color: var(--hope); font-family: var(--font-display); font-size: 14px;
+    outline: none; width: 48px;
+  }
+  .diff-wrap { display: flex; align-items: center; gap: 4px; }
+  .diff-btn { font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); cursor: pointer; border: 1px solid var(--border); border-radius: 2px; padding: 0px 4px; background: var(--card); line-height: 1.5; }
+  .diff-btn:hover { color: var(--hope); border-color: var(--hope-dim); }
+
+  .sb-row { display: flex; flex-direction: column; gap: 3px; }
+  .sb-row-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.12em; color: var(--text-faint); text-transform: uppercase; }
+  .sb-row-value { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+  .sb-row-input { font-family: var(--font-body); font-size: 12px; color: var(--text-dim); background: transparent; border: none; border-bottom: 1px dashed var(--border); outline: none; width: 100%; }
+  .sb-row-input:focus { border-bottom-color: var(--green-hi); color: var(--text); }
+
+  .adv-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+  .adv-tag { font-family: var(--font-mono); font-size: 8px; padding: 2px 6px; border-radius: 3px; background: rgba(239,68,68,0.1); color: #e05c4b; border: 1px solid rgba(239,68,68,0.2); }
+
+  /* Features */
+  .features-section { display: flex; flex-direction: column; gap: 1px; }
+  .features-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .features-title { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.12em; color: var(--text-faint); text-transform: uppercase; }
+  .add-feature-btn { font-family: var(--font-mono); font-size: 8px; color: var(--arcane-hi); cursor: pointer; border: 1px solid rgba(110,86,168,0.3); border-radius: 3px; padding: 2px 6px; background: rgba(110,86,168,0.05); }
+
+  .feature-entry {
+    border: 1px solid var(--border); border-radius: 5px;
+    padding: 8px 10px; margin-bottom: 5px;
+    position: relative;
+  }
+  .feature-entry.passive { border-left: 2px solid var(--arcane); }
+  .feature-entry.action  { border-left: 2px solid var(--hope-dim); }
+  .feature-entry.reaction { border-left: 2px solid var(--green); }
+  .feature-entry.fear   { border-left: 2px solid var(--fear); background: rgba(192,57,43,0.04); }
+
+  .feat-top { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+  .feat-name-in {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em;
+    color: var(--text); background: transparent; border: none;
+    border-bottom: 1px dashed var(--border); outline: none; flex: 1; min-width: 80px;
+    padding: 1px 0;
+  }
+  .feat-name-in:focus { border-bottom-color: var(--hope); }
+
+  .feat-badge {
+    font-family: var(--font-mono); font-size: 8px; padding: 2px 6px;
+    border-radius: 3px; cursor: pointer; flex-shrink: 0;
+  }
+  .feat-badge.passive  { background: rgba(110,86,168,0.15); color: var(--arcane-hi); border: 1px solid rgba(110,86,168,0.3); }
+  .feat-badge.action   { background: rgba(212,168,67,0.12); color: var(--hope); border: 1px solid rgba(212,168,67,0.3); }
+  .feat-badge.reaction { background: rgba(82,183,136,0.12); color: var(--green-hi); border: 1px solid rgba(82,183,136,0.3); }
+  .feat-badge.fear     { background: rgba(192,57,43,0.15); color: #e05c4b; border: 1px solid rgba(192,57,43,0.3); }
+
+  .feat-cost-in {
+    font-family: var(--font-mono); font-size: 8px; color: var(--fear);
+    background: transparent; border: none; border-bottom: 1px dashed rgba(192,57,43,0.3);
+    outline: none; width: 70px;
+  }
+  .feat-cost-in:focus { border-bottom-color: var(--fear); }
+
+  .feat-desc-in {
+    font-family: var(--font-body); font-size: 11px; color: var(--text-dim);
+    background: transparent; border: none; outline: none; width: 100%;
+    resize: none; line-height: 1.5; padding: 0; display: block;
+  }
+  .feat-desc-in:focus { color: var(--text); }
+  .feat-flavor-in {
+    font-family: var(--font-body); font-size: 10px; color: var(--text-faint);
+    font-style: italic; background: transparent; border: none; outline: none;
+    width: 100%; margin-top: 4px; resize: none; line-height: 1.4; padding: 0; display: block;
+  }
+  .feat-remove { position: absolute; top: 6px; right: 6px; font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); cursor: pointer; }
+  .feat-remove:hover { color: var(--fear); }
+
+  /* Stat block actions */
+  .sb-actions { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--border); background: rgba(0,0,0,0.2); flex-wrap: wrap; }
+  .action-btn { font-family: var(--font-mono); font-size: 9px; padding: 5px 11px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; transition: all 0.12s; }
+  .action-btn.save { border-color: var(--green); color: var(--green-hi); background: rgba(82,183,136,0.08); }
+  .action-btn.save:hover { background: rgba(82,183,136,0.18); }
+  .action-btn.pin { border-color: var(--hope-dim); color: var(--hope); background: rgba(212,168,67,0.06); }
+  .action-btn.pin:hover { background: rgba(212,168,67,0.14); }
+  .action-btn.discard { color: var(--text-faint); }
+  .action-btn.discard:hover { color: var(--fear); border-color: var(--fear); }
+
+  /* ── Library panel ───────────────────────────────────── */
+  .library-panel { background: #090c11; border: 1px solid var(--border-hi); border-radius: 10px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .lib-header { background: #07090d; border-bottom: 1px solid var(--border); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; }
+  .lib-title { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.14em; color: var(--green-hi); }
+  .lib-subtitle { font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); margin-top: 2px; }
+
+  .lib-filter { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .lib-pill { font-family: var(--font-mono); font-size: 8px; padding: 3px 8px; border-radius: 100px; border: 1px solid var(--border); color: var(--text-faint); cursor: pointer; }
+  .lib-pill.active { border-color: var(--hope-dim); color: var(--hope); background: rgba(212,168,67,0.08); }
+
+  .lib-body { padding: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 900px; overflow-y: auto; }
+  .lib-body::-webkit-scrollbar { width: 3px; }
+  .lib-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+  .lib-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
+  .lib-card:hover { border-color: var(--green); }
+  .lib-card-header { padding: 8px 10px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .lib-card-name { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.08em; color: var(--green-hi); }
+  .lib-card-meta { font-family: var(--font-mono); font-size: 8px; color: var(--text-faint); margin-top: 2px; }
+  .lib-tier-badge { font-family: var(--font-mono); font-size: 8px; padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border); color: var(--hope); flex-shrink: 0; }
+  .lib-card-impulse { font-family: var(--font-body); font-size: 11px; color: var(--text-faint); font-style: italic; padding: 0 10px 8px; line-height: 1.4; }
+  .lib-card-actions { display: flex; gap: 4px; padding: 6px 10px; border-top: 1px solid var(--border); background: rgba(0,0,0,0.15); }
+  .lib-mini-btn { font-family: var(--font-mono); font-size: 8px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--border); color: var(--text-faint); cursor: pointer; transition: all 0.1s; }
+  .lib-mini-btn:hover { color: var(--hope); border-color: var(--hope-dim); }
+  .lib-mini-btn.danger:hover { color: var(--fear); border-color: var(--fear); }
+
+  .lib-preloaded-note { font-family: var(--font-body); font-size: 12px; font-style: italic; color: var(--text-faint); padding: 10px; border-top: 1px solid var(--border); text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>Environment Generator — Rulebook Accurate</h1>
+<p class="subtitle">Matches the official Daggerheart stat block format exactly. Quick by default, fully editable before saving.</p>
+
+<div class="demo">
+
+  <!-- LEFT: Generator in Toolkit Panel -->
+  <div class="toolkit">
+    <div class="tk-tabs">
+      <div class="tk-tab">🔍 RULES</div>
+      <div class="tk-tab">📝 NOTES</div>
+      <div class="tk-tab active">🎲 GEN</div>
+      <div class="tk-tab">🎵 SFX</div>
+    </div>
+    <div class="tk-body">
+
+      <div class="section-label">🌍 Environment Generator</div>
+
+      <!-- Setting seed (physical location) -->
+      <div>
+        <div class="field-label" style="margin-bottom:5px;">Setting Seed</div>
+        <div class="chip-grid">
+          <div class="chip active" onclick="selectChip(this,'seed')">🌲 Wilderness</div>
+          <div class="chip" onclick="selectChip(this,'seed')">🌊 River/Water</div>
+          <div class="chip" onclick="selectChip(this,'seed')">⛰ Mountain</div>
+          <div class="chip" onclick="selectChip(this,'seed')">🏘 Settlement</div>
+          <div class="chip" onclick="selectChip(this,'seed')">🏚 Ruin</div>
+          <div class="chip" onclick="selectChip(this,'seed')">🕳 Underground</div>
+          <div class="chip" onclick="selectChip(this,'seed')">✨ Arcane/Fey</div>
+          <div class="chip" onclick="selectChip(this,'seed')">⚔ Battlefield</div>
+        </div>
+      </div>
+
+      <!-- Tier + Type + Generate -->
+      <div>
+        <div class="field-label" style="margin-bottom:5px;">Tier &amp; Type</div>
+        <div class="quick-row" style="margin-bottom:5px;">
+          <select class="field-select" id="tier-sel" onchange="updateDiff()">
+            <option value="1">Tier 1 (Levels 1)</option>
+            <option value="2" selected>Tier 2 (Levels 2–4)</option>
+            <option value="3">Tier 3 (Levels 5–7)</option>
+            <option value="4">Tier 4 (Levels 8–10)</option>
+          </select>
+          <select class="field-select" id="type-sel">
+            <option>Traversal</option>
+            <option>Exploration</option>
+            <option>Social</option>
+            <option>Event</option>
+          </select>
+        </div>
+        <button class="generate-btn" style="width:100%;" onclick="showBlock()">⟳ Generate Environment</button>
+      </div>
+
+      <!-- Advanced -->
+      <div>
+        <div class="adv-toggle" id="adv-toggle" onclick="toggleAdv()">
+          <span class="adv-chevron">›</span>
+          <span>Advanced options</span>
+        </div>
+        <div class="adv-panel" id="adv-panel">
+          <div class="adv-row">
+            <div>
+              <div class="field-label">Difficulty override</div>
+              <input class="field-input" id="diff-override" type="number" placeholder="Auto by tier" min="5" max="25" />
+            </div>
+            <div>
+              <div class="field-label">No. of Features</div>
+              <input class="field-input" id="feat-count" type="number" value="3" min="2" max="5" />
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Feature mix</div>
+            <div class="mini-chips" id="feat-mix">
+              <div class="mini-chip active" onclick="selectMini(this,'feat-mix')">Random</div>
+              <div class="mini-chip" onclick="selectMini(this,'feat-mix')">More Passive</div>
+              <div class="mini-chip" onclick="selectMini(this,'feat-mix')">More Action</div>
+              <div class="mini-chip" onclick="selectMini(this,'feat-mix')">Include Fear Feature</div>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Custom impulses (comma-separated)</div>
+            <input class="field-input" type="text" placeholder="e.g. divide the party, exhaust resources..." />
+          </div>
+        </div>
+      </div>
+
+      <!-- Generated Stat Block -->
+      <div id="sb-wrap">
+        <div class="stat-block">
+          <div class="sb-header">
+            <input class="sb-name-input" value="THORNWOOD CROSSING" />
+            <div class="sb-tier-type" id="sb-tier-type">Tier 2 Traversal</div>
+            <input class="sb-desc-input" value="A dense forest path split by a collapsed bridge spanning a fast ravine — the only way through is improvised." />
+          </div>
+          <div class="sb-body">
+
+            <div class="sb-row">
+              <div class="sb-row-label">Impulses</div>
+              <input class="sb-row-input" value="Divide the party, exhaust resources, punish haste" />
+            </div>
+
+            <div class="sb-stat-row">
+              <div class="sb-stat">
+                <div class="sb-stat-label">DIFFICULTY</div>
+                <div class="diff-wrap">
+                  <input class="sb-stat-val editable" id="diff-val" value="14" type="number" />
+                  <div style="display:flex;flex-direction:column;gap:1px;">
+                    <div class="diff-btn" onclick="adjDiff(1)">▲</div>
+                    <div class="diff-btn" onclick="adjDiff(-1)">▼</div>
+                  </div>
+                </div>
+              </div>
+              <div class="sb-stat">
+                <div class="sb-stat-label">DAMAGE DICE</div>
+                <div class="sb-stat-val" style="font-size:11px;color:var(--text-dim);">2d6+3 to 2d10+2</div>
+              </div>
+            </div>
+
+            <div class="sb-row">
+              <div class="sb-row-label">Potential Adversaries</div>
+              <input class="sb-row-input" value="Beasts (Bear, Dire Wolf), Jagged Knife Bandits (Hexer, Kneebreaker, Lackey), Young Dryad" />
+            </div>
+
+            <!-- Features -->
+            <div class="features-section">
+              <div class="features-header">
+                <div class="features-title">Features</div>
+                <div class="add-feature-btn" onclick="addFeature()">+ Add Feature</div>
+              </div>
+
+              <div class="feature-entry passive" id="f1">
+                <div class="feat-remove" onclick="this.closest('.feature-entry').remove()">✕</div>
+                <div class="feat-top">
+                  <input class="feat-name-in" value="Treacherous Crossing" />
+                  <span class="feat-badge passive" onclick="cycleType(this)">PASSIVE</span>
+                </div>
+                <textarea class="feat-desc-in" rows="3">Crossing the ravine requires the party to complete a Progress Countdown (4). A PC who rolls with Fear is immediately targeted by the "Undertow" action without requiring a Fear to be spent.</textarea>
+                <textarea class="feat-flavor-in" rows="1">How does each PC choose to cross? What do they risk to get across faster?</textarea>
+              </div>
+
+              <div class="feature-entry action" id="f2">
+                <div class="feat-remove" onclick="this.closest('.feature-entry').remove()">✕</div>
+                <div class="feat-top">
+                  <input class="feat-name-in" value="Undertow" />
+                  <span class="feat-badge action" onclick="cycleType(this)">ACTION</span>
+                  <input class="feat-cost-in" value="Spend a Fear" placeholder="cost..." />
+                </div>
+                <textarea class="feat-desc-in" rows="3">Catch a PC in the current. They must make an Agility Reaction Roll. On a failure, they take 2d8+2 physical damage and are moved a Close distance downstream, becoming Vulnerable until they get out of the river. On a success, they must mark a Stress.</textarea>
+                <textarea class="feat-flavor-in" rows="1">What trinkets and baubles lie along the bottom? What creatures swim these waters?</textarea>
+              </div>
+
+              <div class="feature-entry fear" id="f3">
+                <div class="feat-remove" onclick="this.closest('.feature-entry').remove()">✕</div>
+                <div class="feat-top">
+                  <input class="feat-name-in" value="Canopy Predator" />
+                  <span class="feat-badge fear" onclick="cycleType(this)">FEAR FEATURE</span>
+                  <input class="feat-cost-in" value="Spend a Fear" placeholder="cost..." />
+                </div>
+                <textarea class="feat-desc-in" rows="3">Summon a predator that drops from the canopy onto a chosen PC. They are Restrained until they succeed on a Strength roll (DC 14) on their action. The predator immediately takes the spotlight.</textarea>
+                <textarea class="feat-flavor-in" rows="1">What has been watching from above? How long has it tracked the party?</textarea>
+              </div>
+
+            </div>
+          </div>
+          <div class="sb-actions">
+            <button class="action-btn save" onclick="saveEnv()">💾 Save to Library</button>
+            <button class="action-btn pin" onclick="alert('Pinned to Session Notes!')">📌 Pin to Notes</button>
+            <button class="action-btn discard" onclick="document.getElementById('sb-wrap').style.display='none'">✕ Discard</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: Library -->
+  <div class="library-panel">
+    <div class="lib-header">
+      <div>
+        <div class="lib-title">🌿 Environment Library</div>
+        <div class="lib-subtitle">Pre-loaded from Daggerheart Core + your saved environments</div>
+      </div>
+    </div>
+    <div class="lib-filter">
+      <div class="lib-pill active">All</div>
+      <div class="lib-pill">Tier 1</div>
+      <div class="lib-pill">Tier 2</div>
+      <div class="lib-pill">Tier 3</div>
+      <div class="lib-pill">Tier 4</div>
+      <div class="lib-pill">Traversal</div>
+      <div class="lib-pill">Social</div>
+      <div class="lib-pill">Exploration</div>
+      <div class="lib-pill">Event</div>
+      <div class="lib-pill">📌 Mine</div>
+    </div>
+    <div class="lib-body">
+
+      <!-- User-saved -->
+      <div class="lib-card" id="saved-card" style="display:none; border-color:var(--green);">
+        <div class="lib-card-header">
+          <div>
+            <div class="lib-card-name">THORNWOOD CROSSING</div>
+            <div class="lib-card-meta">Tier 2 · Traversal · Wilderness · 3 features</div>
+          </div>
+          <div class="lib-tier-badge">T2 ★</div>
+        </div>
+        <div class="lib-card-impulse">"Divide the party, exhaust resources, punish haste"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+          <div class="lib-mini-btn danger">✕</div>
+        </div>
+      </div>
+
+      <!-- Pre-loaded from Core (T1) -->
+      <div class="lib-card">
+        <div class="lib-card-header">
+          <div>
+            <div class="lib-card-name">RAGING RIVER</div>
+            <div class="lib-card-meta">Tier 1 · Traversal · 3 features</div>
+          </div>
+          <div class="lib-tier-badge">T1</div>
+        </div>
+        <div class="lib-card-impulse">"Bar crossing, carry away the unready, divide the land"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <div class="lib-card-header">
+          <div>
+            <div class="lib-card-name">ABANDONED GROVE</div>
+            <div class="lib-card-meta">Tier 1 · Exploration · 4 features</div>
+          </div>
+          <div class="lib-tier-badge">T1</div>
+        </div>
+        <div class="lib-card-impulse">"Draw in the curious, echo the past"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <div class="lib-card-header">
+          <div>
+            <div class="lib-card-name">BUSTLING MARKETPLACE</div>
+            <div class="lib-card-meta">Tier 1 · Social · 4 features</div>
+          </div>
+          <div class="lib-tier-badge">T1</div>
+        </div>
+        <div class="lib-card-impulse">"Buy low, sell high, tempt with wares from near and far"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <div class="lib-card-header">
+          <div>
+            <div class="lib-card-name">MOUNTAIN PASS</div>
+            <div class="lib-card-meta">Tier 2 · Traversal · 3 features</div>
+          </div>
+          <div class="lib-tier-badge">T2</div>
+        </div>
+        <div class="lib-card-impulse">"Exact a chilling toll in supplies and stamina, slow down travel"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <div class="lib-card-header">
+          <div>
+            <div class="lib-card-name">HAUNTED CITY</div>
+            <div class="lib-card-meta">Tier 2 · Exploration · 4 features</div>
+          </div>
+          <div class="lib-tier-badge">T2</div>
+        </div>
+        <div class="lib-card-impulse">"Misdirect and disorient, replay apocalypses both public and personal"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <div class="lib-card-header">
+          <div>
+            <div class="lib-card-name">CASTLE SIEGE</div>
+            <div class="lib-card-meta">Tier 3 · Event · 4 features</div>
+          </div>
+          <div class="lib-tier-badge">T3</div>
+        </div>
+        <div class="lib-card-impulse">"Overwhelm defences, make every second count"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <div class="lib-card-header">
+          <div>
+            <div class="lib-card-name">IMPERIAL COURT</div>
+            <div class="lib-card-meta">Tier 4 · Social · 4 features</div>
+          </div>
+          <div class="lib-tier-badge">T4</div>
+        </div>
+        <div class="lib-card-impulse">"Expose weakness, leverage power, make an example"</div>
+        <div class="lib-card-actions">
+          <div class="lib-mini-btn">▶ Load</div>
+          <div class="lib-mini-btn">📌 Pin</div>
+          <div class="lib-mini-btn">✏ Edit</div>
+        </div>
+      </div>
+
+      <div class="lib-preloaded-note">20 environments pre-loaded from Daggerheart Core Rulebook · Yours appear above</div>
+
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:24px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);max-width:900px;">
+  The stat block now matches the official Daggerheart format exactly. Feature types are <strong style="color:var(--arcane-hi);">Passive</strong>, <strong style="color:var(--hope);">Action</strong>, <strong style="color:var(--green-hi);">Reaction</strong>, and <strong style="color:#e05c4b;">Fear Feature</strong> — click the badge on any feature to cycle through types. All 20 core book environments are pre-loaded in the library, filterable by tier and type.
+</p>
+<p style="margin-top:10px;font-family:var(--font-body);font-size:14px;color:var(--text-dim);max-width:900px;">
+  <strong style="color:var(--text);">Does this design feel right?</strong> Should the Environment Library live here in the Generator tab, or alongside adversaries in the Arsenal sidebar?
+</p>
+
+<script>
+const TIER_DEFAULTS = { '1': 11, '2': 14, '3': 17, '4': 20 };
+const FEAT_TYPES = ['passive','action','reaction','fear'];
+const FEAT_LABELS = { passive:'PASSIVE', action:'ACTION', reaction:'REACTION', fear:'FEAR FEATURE' };
+
+function selectChip(el, group) {
+  el.closest('.chip-grid').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+function selectMini(el, groupId) {
+  el.closest('.mini-chips').querySelectorAll('.mini-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+function toggleAdv() {
+  document.getElementById('adv-toggle').classList.toggle('open');
+  document.getElementById('adv-panel').classList.toggle('open');
+}
+function updateDiff() {
+  const tier = document.getElementById('tier-sel').value;
+  const override = document.getElementById('diff-override')?.value;
+  if (!override) document.getElementById('diff-val').value = TIER_DEFAULTS[tier];
+}
+function adjDiff(d) {
+  const el = document.getElementById('diff-val');
+  el.value = Math.max(5, Math.min(25, parseInt(el.value) + d));
+}
+function cycleType(badge) {
+  const entry = badge.closest('.feature-entry');
+  const cur = FEAT_TYPES.indexOf([...entry.classList].find(c => FEAT_TYPES.includes(c)));
+  const next = FEAT_TYPES[(cur + 1) % FEAT_TYPES.length];
+  FEAT_TYPES.forEach(t => entry.classList.remove(t));
+  entry.classList.add(next);
+  badge.className = `feat-badge ${next}`;
+  badge.textContent = FEAT_LABELS[next];
+  // Show/hide cost field
+  const costEl = entry.querySelector('.feat-cost-in');
+  if (costEl) costEl.style.display = (next === 'passive') ? 'none' : '';
+}
+function showBlock() {
+  const tier = document.getElementById('tier-sel').value;
+  document.getElementById('diff-val').value = TIER_DEFAULTS[tier];
+  document.getElementById('sb-tier-type').textContent = `Tier ${tier} ${document.getElementById('type-sel').value}`;
+  const sb = document.getElementById('sb-wrap');
+  sb.style.display = '';
+  sb.style.opacity = '0';
+  sb.style.transition = 'opacity 0.3s';
+  setTimeout(() => sb.style.opacity = '1', 10);
+}
+function addFeature() {
+  const list = document.querySelector('.features-section');
+  const div = document.createElement('div');
+  div.className = 'feature-entry action';
+  div.innerHTML = `
+    <div class="feat-remove" onclick="this.closest('.feature-entry').remove()">✕</div>
+    <div class="feat-top">
+      <input class="feat-name-in" placeholder="Feature name..." />
+      <span class="feat-badge action" onclick="cycleType(this)">ACTION</span>
+      <input class="feat-cost-in" value="Spend a Fear" placeholder="cost..." />
+    </div>
+    <textarea class="feat-desc-in" rows="2" placeholder="Describe what this feature does mechanically..."></textarea>
+    <textarea class="feat-flavor-in" rows="1" placeholder="Italicized flavor question for the GM..."></textarea>
+  `;
+  list.insertBefore(div, list.querySelector('.features-header').nextSibling);
+}
+function saveEnv() {
+  document.getElementById('saved-card').style.display = '';
+  alert('THORNWOOD CROSSING saved to Environment Library!');
+}
+</script>
+</body>
+</html>
