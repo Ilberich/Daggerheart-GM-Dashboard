@@ -589,16 +589,18 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 body.toolkit-open .tab-panel{right:var(--toolkit-w);}
 
 #toolkit-toggle{
-  position:absolute;top:50%;left:0;
-  transform:translate(-100%,-50%);
+  position:fixed;top:50%;right:0;
+  transform:translateY(-50%);
   width:20px;height:48px;
   background:var(--surface);border:1px solid var(--border);border-right:none;
   border-radius:6px 0 0 6px;
   color:var(--text-muted);font-size:14px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  transition:color .15s,background .15s;
+  transition:color .15s,background .15s,right .3s;
+  z-index:149;
 }
 #toolkit-toggle:hover{color:var(--gold);background:var(--surface2);}
+body.toolkit-open #toolkit-toggle{right:var(--toolkit-w);}
 
 #toolkit-tabs{
   display:flex;border-bottom:1px solid var(--border);flex-shrink:0;
