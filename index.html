@@ -47,6 +47,10 @@
         <div class="sidebar-header">
           <button id="sidebar-toggle" title="Toggle Arsenal" onclick="toggleSidebar()">☰</button>
           <h2>⚔ Adversary Arsenal</h2>
+          <label class="upload-adv-btn" title="Upload a .md adversary file">
+            ⬆ Upload Adversary
+            <input type="file" id="adv-upload-input" accept=".md" multiple style="display:none" onchange="handleAdvUpload(this.files)">
+          </label>
         </div>
         <div class="bp-panel">
           <div class="bp-row">
@@ -71,9 +75,6 @@
           <input type="search" class="adv-search-input" id="adv-search" placeholder="Search adversaries…" oninput="setSearch(this.value)" autocomplete="off">
         </div>
         <div class="filter-row" id="filter-row"></div>
-        <button class="create-custom-btn" onclick="openCustomModal()">
-          <span>✦</span><span>Create Custom Adversary</span>
-        </button>
         <div class="adv-list" id="adv-list"></div>
       </div>
     </div>

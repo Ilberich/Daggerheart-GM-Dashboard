@@ -32,12 +32,28 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
   - Environment Stat Block Generator (11 seeds × 4 tiers × 3 types; 19 official PHB environments; save to library)
 
 ### Custom Adversaries
-- Create custom adversaries via the modal form (name, type, stats, abilities)
-- Appear in the Arsenal alongside built-in adversaries
+- **Upload Adversary** — click the "⬆ Upload Adversary" button in the Arsenal sidebar header to import one or more `.md` adversary files
+- Each file is parsed from YAML frontmatter; abilities are read from the `## Abilities` section
+- Invalid or incomplete files show a toast error indicating the missing field
+- Uploaded adversaries appear instantly in the Arsenal and are saved to IndexedDB
+- See [`sample_adversary.md`](sample_adversary.md) for the exact file format
+- Custom adversaries can still be edited or deleted via the edit/delete buttons in the Arsenal list
 
 ### Data Persistence & Backup
 - All state saved to **IndexedDB** — survives page refresh
 - **Export / Import JSON** — back up your full session (combat, notes, encounters, library) to a file; restore on any device
+
+### Adversary .MD Format
+
+Upload adversaries from `.md` files using YAML frontmatter. Required fields: `name`, `type`, `dc`, `hp`, `st`, `maj`, `atk`, `wpn`, `dmg`. Optional: `sev`, `motives`. Abilities go under `## Abilities` using `### Ability Name` headings followed by `**tag** — description`. A `## Tactics` section is ignored (GM-only notes).
+
+See [`sample_adversary.md`](sample_adversary.md) for a complete working example.
+
+---
+
+## Sidebar Toggle Fix
+
+The Arsenal sidebar toggle button is now 38×38 px (up from 30×30 px) with a larger 20 px icon, positioned slightly inward from the left edge to avoid curved-screen bezel clipping on phones. On mobile it also has `touch-action:manipulation` set for reliable tap behaviour.
 
 ---
 
