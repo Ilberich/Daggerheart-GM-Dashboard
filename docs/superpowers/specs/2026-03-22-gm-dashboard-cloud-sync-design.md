@@ -42,14 +42,18 @@ Until both of these are resolved, dirty tracking will silently miss changes to t
   ```
 
 ### Sync File Format
-Each sync file contains the raw array (or object) for that store — no version envelope. Example `sync/saved_encounters.json`:
+Each sync file is a wrapper object containing `_synced_at` (Unix timestamp in ms) and `data` (the raw store content). Example `sync/saved_encounters.json`:
 ```json
-[
-  { "id": "goblin-ambush", "name": "Goblin Ambush", ... },
-  ...
-]
+{
+  "_synced_at": 1737000000000,
+  "data": [
+    { "id": "goblin-ambush", "name": "Goblin Ambush", ... }
+  ]
+}
 ```
-`combat_session.json` contains the session state object (same shape as stored in IndexedDB, minus the `key` field added by `db_put`). This avoids coupling the sync format to the Export/Import envelope and keeps each file self-contained.
+`combat_session.json` uses the same wrapper, with `data` containing the session state object (minus the `key` field added by `db_put`).
+
+The `_synced_at` timestamp is the authoritative record of when that store was last pushed. It is used for per-store conflict resolution — whichever side (local or remote) has the newer timestamp wins for that store independently.
 
 ### New IndexedDB `settings` Keys
 
@@ -74,40 +78,51 @@ Each sync file contains the raw array (or object) for that store — no version 
 
 ## Sync Flow
 
-### On App Open — Pull
-1. If sync is not configured, skip entirely and proceed with normal init.
-2. Fetch metadata (SHA + content) for all 5 files from GitHub **in parallel** via `Promise.all`. GETs are safe to parallelise.
-3. For each file, compare returned SHA against stored `sync_sha_<store>`.
-4. For any file whose SHA has changed (or where no local SHA exists): decode content from base64, parse JSON, import into local IndexedDB store. When importing `combat_session`, re-add `{key: 'state'}` before calling `db_put` (this field is stripped from the sync file but required by the IndexedDB store's keyPath).
-5. After importing: set both `sync_sha_<store>` and `sync_last_modified_<store>` and `sync_last_pushed_<store>` to `Date.now()`. This marks the store as clean — `last_modified === last_pushed` — so the next push-dirty check correctly skips it.
-6. If any store is pulled: show toast listing changed stores — e.g. *"Campaign updated from cloud (combat_session, saved_encounters)"*
-7. If nothing changed, proceed silently.
-8. A 404 on a file means it has never been pushed — treat as "no update needed" for that store, not as an error.
+All three sync triggers (app open, auto-sync timer, Sync Now button) use the same `runSync()` function. There is no separate pull-only or push-only path.
 
-### On Timer / Sync Now — Push
-1. **Run a pull first** (steps 1–8 above). Do not push until pull completes. This ensures `sync_sha_<store>` values are current before any PUT.
-2. For each store, compare `sync_last_modified_<store>` vs `sync_last_pushed_<store>`. If `modified > pushed`, the store is dirty and needs pushing.
-3. Push dirty stores **sequentially** (not in parallel). Each PUT must complete and return a new SHA before the next PUT begins. This is required by the GitHub Contents API — parallel PUTs to the same repo will fail with 409/422 conflicts.
-4. For each dirty store:
-   a. Serialise store data to JSON.
-   b. Encode: `btoa(unescape(encodeURIComponent(json)))`.
-   c. If `sync_sha_<store>` exists in settings: include it in the PUT body. If it does not exist (first push for this store): omit the `sha` field entirely.
-   d. PUT to GitHub with commit message: `"sync: {store} {YYYY-MM-DD HH:MM}"`.
-   e. On success: store the new SHA returned by the API in `sync_sha_<store>`. Set `sync_last_pushed_<store>` to `Date.now()`.
-   f. On 422 with SHA present: the remote file changed between pull and push (race condition). Fetch current SHA, update `sync_sha_<store>`, and retry once. If retry fails, mark store as failed and continue to next store.
-   g. On 422 without SHA (first create attempt): the file already exists. Fetch its SHA, store it, retry as an update.
-5. After all stores processed: update tab bar indicator with last sync time.
-6. If any stores failed: show `⚠ Partially synced` state. Failed stores are retried on the next interval.
+### `runSync()` — Per-Store Comparison
+1. If sync is not configured, return immediately.
+2. Fetch all 5 files from GitHub **in parallel** via `Promise.all` (GETs are safe to parallelise). For each file, retrieve `sha`, `_synced_at` from content, and the raw `data`.
+3. A 404 on any file means it has never been pushed — treat `_synced_at` as `0` for that store.
+4. For each store **independently**, compare `sync_last_modified_<store>` (local) vs remote `_synced_at`:
+   - **Local newer** (`last_modified > _synced_at`): store is dirty — queue for push.
+   - **Remote newer** (`_synced_at > last_modified`): remote has updates — queue for pull.
+   - **Equal or both zero**: nothing to do — skip.
+5. **Apply all pulls first** (in parallel — writes to separate stores, safe):
+   - Decode base64 content (strip `\n` before `atob`), parse JSON, extract `data`.
+   - Import into local IndexedDB store. For `combat_session`, re-add `{key: 'state'}` before `db_put`.
+   - Set `sync_sha_<store>`, `sync_last_modified_<store>`, and `sync_last_pushed_<store>` all to `Date.now()`.
+   - If any stores were pulled: show toast — e.g. *"Campaign updated from cloud (saved_encounters)"*
+6. **Apply all pushes sequentially** (GitHub Contents API requires sequential PUTs):
+   - For each store queued for push:
+     a. Serialise: `{ _synced_at: Date.now(), data: <store data> }` to JSON.
+     b. Encode: `btoa(unescape(encodeURIComponent(json)))`.
+     c. Include `sync_sha_<store>` in PUT body if it exists; omit entirely on first create.
+     d. PUT with commit message: `"sync: {store} {YYYY-MM-DD HH:MM}"`.
+     e. On success: update `sync_sha_<store>` with the new SHA from the response. Set `sync_last_pushed_<store>` to `Date.now()`.
+     f. On 422 with SHA present: fetch current SHA, update `sync_sha_<store>`, retry once. If retry fails, mark store as failed and continue.
+     g. On 422 without SHA (first create): file already exists — fetch its SHA, store it, retry as update.
+7. Update tab bar indicator: last sync time if all succeeded; `⚠ Partially synced` if any store failed.
+8. Failed stores are retried on the next timer tick.
+
+### Conflict Rule
+Each store is resolved **independently** by comparing timestamps. **Local wins if local is newer; remote wins if remote is newer.** There is no global "pull first" or "push first" — only per-store timestamp comparison.
+
+This means:
+- Offline session (local modified, remote unchanged) → local wins, pushes ✅
+- Device swap after Sync Now (remote updated, local clean) → remote wins, pulls ✅
+- Both devices edited *different* stores → each store's newer version wins, no data lost ✅
+- Both devices edited the *same* store → whichever syncs first wins for that store ⚠ *(known limitation — sync before switching devices)*
+
+### Unsynced Changes Indicator
+Any time `sync_last_modified_<store> > sync_last_pushed_<store>` for any store, the tab bar sync button shows the **unsynced changes** state (see UI section). This updates in real time as data changes and clears as soon as a successful push completes.
 
 ### Auto-Sync Timer
 - Configurable interval: minimum 5 minutes, default 15 minutes, no maximum.
 - Enforced in code: `Math.max(5, sync_interval)` — not just the UI input.
 - Timer starts after first successful connection.
-- If offline when timer fires: skip silently. Retry on next tick.
+- If offline when timer fires: skip silently, show `☁✕ No connection`. Retry on next tick.
 - Timer is cleared and restarted when the user changes the interval in settings.
-
-### Conflict Rule
-Pull always runs before push. If remote has changed AND local has changes for the same store, **remote wins** — local changes for that store are overwritten during pull. Because `sync_last_modified` is set equal to `sync_last_pushed` after a pull, the store is no longer considered dirty, and the local changes are not pushed. This is by design for sequential device use (not simultaneous editing). Users are informed of this behaviour during setup.
 
 ---
 
@@ -129,15 +144,18 @@ When the user clicks **Connect**:
 ### Tab Bar (sync configured only)
 A `☁` sync button added to the right side of the tab bar, left of the settings gear. States:
 
-| State | Display |
-|-------|---------|
-| Idle | `☁ Synced · 2:32 PM` (muted text, time of last sync) |
-| In progress | Spinner |
-| No internet | `☁✕ No connection` (crossed-out cloud icon) |
-| Sync failed | `⚠ Sync failed` (warning colour) |
-| Partial failure | `⚠ Partially synced` (warning colour) |
+| State | Display | When |
+|-------|---------|------|
+| Idle | `☁ Synced · 2:32 PM` (muted text) | All stores clean, last sync time shown |
+| Unsynced changes | `☁ Unsynced changes` (gold/amber colour) | Any store has local changes not yet pushed |
+| In progress | `☁ Syncing…` + spinner | `runSync()` is running |
+| No internet | `☁✕ No connection` (crossed-out cloud, muted) | Network unreachable |
+| Sync failed | `⚠ Sync failed` (warning colour) | All pushes failed |
+| Partial failure | `⚠ Partially synced` (warning colour) | Some stores failed to push |
 
-Clicking any error/warning state opens the settings modal directly to the Cloud Sync section.
+The **Unsynced changes** state is the key prompt for users to sync before switching devices. It appears the moment any data changes and clears as soon as the push succeeds.
+
+Clicking the button in any state triggers `runSync()` immediately. Clicking an error/warning state also opens the settings modal Cloud Sync section alongside triggering a retry.
 
 ### Settings Modal — Cloud Sync Section
 Added below the existing Export/Import section:
@@ -259,6 +277,8 @@ Do not use `Promise.all` for pushes.
 
 1. A non-developer can complete setup in under 5 minutes following only the in-app guide.
 2. Pressing Sync Now on the laptop, then opening the app on the phone, results in the phone showing the exact same combat state — verified by manual test.
-3. Users who do not configure sync see no sync-related UI anywhere in the app.
-4. The app functions fully offline (all existing features work) whether or not sync is configured.
-5. A failed push leaves the IndexedDB store unchanged — verified by disconnecting the network mid-push, confirming local data is intact, and confirming no partial write occurred.
+3. Making any change (e.g. ticking an HP dot) causes the tab bar to immediately show "Unsynced changes."
+4. Going offline during a session, making changes, reconnecting, and syncing pushes local changes to GitHub without overwriting them — verified by manual test.
+5. Users who do not configure sync see no sync-related UI anywhere in the app.
+6. The app functions fully offline (all existing features work) whether or not sync is configured.
+7. A failed push leaves the IndexedDB store unchanged — verified by disconnecting the network mid-push, confirming local data is intact, and confirming no partial write occurred.
