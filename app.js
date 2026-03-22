@@ -876,6 +876,106 @@ function saveCustomAdvStorage(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(customAdv));}catch(e){}
 }
 
+function parseAdvMd(raw,filename){
+  var text=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  // Extract YAML frontmatter between first pair of --- delimiters
+  var fm={};
+  var parts=text.split('---');
+  // parts[0] may be empty string before first ---, parts[1] is frontmatter, rest is body
+  if(parts.length<3){return {error:'Missing frontmatter delimiters'};}
+  var yamlBlock=parts[1];
+  var body=parts.slice(2).join('---');
+  // Parse each key: value line in the frontmatter
+  var intFields={dc:1,hp:1,st:1,maj:1,sev:1};
+  yamlBlock.split('\n').forEach(function(line){
+    var colon=line.indexOf(':');
+    if(colon<1)return;
+    var key=line.slice(0,colon).trim();
+    var val=line.slice(colon+1).trim();
+    if(!key||val==='')return;
+    if(intFields[key])fm[key]=parseInt(val,10);
+    else fm[key]=val;
+  });
+  // sev is optional — set to null if not present
+  if(fm.sev===undefined)fm.sev=null;
+  // Validate required fields
+  var required=['name','type','dc','hp','st','maj','atk','wpn','dmg'];
+  for(var ri=0;ri<required.length;ri++){
+    var rf=required[ri];
+    if(fm[rf]===undefined||fm[rf]===''||fm[rf]===null){
+      return {error:'Missing required field: '+rf};
+    }
+  }
+  // Parse ## Abilities section
+  var feats=[];
+  var abilitiesMatch=body.split('## Abilities');
+  if(abilitiesMatch.length>1){
+    var abSection=abilitiesMatch[1].split(/^## /m)[0]; // stop at next ## heading
+    var abilityBlocks=abSection.split(/^### /m);
+    abilityBlocks.forEach(function(block){
+      if(!block.trim())return;
+      var lines=block.split('\n');
+      var abilityName=lines[0].trim();
+      if(!abilityName)return;
+      // Find the **tag** — description line
+      for(var li=1;li<lines.length;li++){
+        var l=lines[li].trim();
+        if(!l)continue;
+        var tagMatch=l.match(/^\*\*([^*]+)\*\*\s*[—–-]+\s*(.+)/);
+        if(tagMatch){
+          feats.push({k:tagMatch[1].trim(),n:abilityName,d:tagMatch[2].trim()});
+        }
+        break;
+      }
+    });
+  }
+  // Build the adversary object
+  var safeName=fm.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+  var id='custom_'+safeName+'_'+Date.now();
+  var adv={
+    id:id,
+    name:fm.name,
+    type:fm.type,
+    dc:fm.dc,
+    hp:fm.hp,
+    st:fm.st,
+    maj:fm.maj,
+    sev:fm.sev,
+    atk:fm.atk,
+    wpn:fm.wpn,
+    dmg:fm.dmg,
+    motives:fm.motives||'',
+    feats:feats,
+    _custom:true
+  };
+  return adv;
+}
+
+function handleAdvUpload(files){
+  var fileArr=Array.prototype.slice.call(files);
+  fileArr.forEach(function(file){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var raw=e.target.result;
+      var result=parseAdvMd(raw,file.name);
+      if(result.error){
+        showToast('⚠ '+result.error+' in '+file.name);
+        return;
+      }
+      var adv=result;
+      ADV.push(adv);
+      customAdv.push(adv);
+      db_put('custom_adversaries',adv);
+      renderList();
+      showToast('✅ '+adv.name+' added to Arsenal');
+    };
+    reader.readAsText(file);
+  });
+  // Reset file input so the same file can be re-uploaded
+  var input=document.getElementById('adv-upload-input');
+  if(input)input.value='';
+}
+
 function openCustomModal(editId){
   document.getElementById('cm-modal-title').textContent=editId?'✦ Edit Custom Adversary':'✦ Create Custom Adversary';
   if(editId){
