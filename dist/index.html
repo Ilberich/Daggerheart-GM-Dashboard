@@ -2574,6 +2574,25 @@ function _doLoadEncounter(enc){
   modal.querySelector('.elm-cancel').onclick=function(){modal.remove();};
 }
 
+function _openEncounterAsNewBattle(enc){
+  saveBattleState();
+  var id='battle-'+Date.now();
+  var b={id,name:enc.name,battleStarted:false,round:1,playerCount,cart:[],combatants:[],iid:0};
+  battles.push(b);
+  tabOrder.push({type:'battle',id});
+  activeBattleId=id;
+  loadBattleState(b);
+  var advs=JSON.parse(JSON.stringify(enc.adversaries||[]));
+  advs.forEach(function(a){cart.push(Object.assign({},a,{_iid:++iid}));});
+  b.cart=cart;b.iid=iid;
+  activeTab='combat';
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  renderAllTabs();
+  applyBattleToDOM();
+  saveSession();
+  showToast('"'+enc.name+'" opened.');
+}
+
 function _applyEncounter(enc,mode){
   if(mode==='replace'){
     battleStarted=false;round=1;cart=[];combatants=[];
@@ -3125,7 +3144,7 @@ document.addEventListener('click',function(e){
     db_getAll('saved_encounters').then(function(encs){
       var enc=(encs||[]).find(function(x){return x.name===encName;});
       if(!enc){showToast('No saved encounter named "'+encName+'" found.');return;}
-      _doLoadEncounter(enc);
+      _openEncounterAsNewBattle(enc);
     });
     return;
   }
