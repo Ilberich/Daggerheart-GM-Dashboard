@@ -17,6 +17,8 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 ### Lore Tabs
 - Drag-and-drop `.md` files to open them as wiki-style reference tabs
 - `[[wiki links]]` between notes; `[[encounter:Name]]` links that load saved encounters directly
+- **In-browser editing** — click `✏ Edit` (top-right of any lore tab) to edit the raw markdown; click `👁 Preview` to re-render and save; press `Escape` to cancel without saving
+- **New blank tab** — click the `📝 +` button in the tab bar to create an empty lore tab that opens directly in edit mode
 
 ### Saved Encounters
 - Save any staged encounter queue with a name
@@ -111,6 +113,8 @@ BP budget = player count × 3 (default). Adjust in the sidebar.
 ## Lore Tab Tips
 
 - Drag any `.md` file onto the browser window to open it as a tab
+- Click `📝 +` in the tab bar to create a blank lore tab and start writing immediately
+- Click `✏ Edit` (top-right of any lore tab) to edit in-browser; `Escape` cancels, `👁 Preview` saves
 - Use `[[Note Title]]` inside a note to create wiki-style links
 - Use `[[encounter:Goblin Ambush]]` to create a clickable link that loads that saved encounter
 
