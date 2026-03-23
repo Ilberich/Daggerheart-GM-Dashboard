@@ -871,9 +871,9 @@ function confirmSaveEncounter(){
   if(!name)return;
   db_getAll('saved_encounters').then(function(existing){
     var dupe=(existing||[]).find(function(e){return e.name.toLowerCase()===name.toLowerCase();});
-    if(dupe){showToast('An encounter named "'+name+'" already exists.');return;}
+    if(dupe&&!confirm('Encounter "'+name+'" already exists. Overwrite it?'))return;
     var enc={
-      id:'encounter_'+Date.now(),
+      id:dupe?dupe.id:'encounter_'+Date.now(),
       name:name,
       adversaries:JSON.parse(JSON.stringify(cart)),
       savedAt:new Date().toISOString()
