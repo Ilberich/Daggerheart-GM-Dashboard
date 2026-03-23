@@ -329,7 +329,7 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .tab-close:hover{background:rgba(224,90,106,.2);color:var(--fear);}
 
 /* New tab buttons (battle + lore) */
-#new-battle-btn,#new-lore-btn,#new-blank-lore-btn{
+#new-battle-btn,#lore-add-btn{
   display:flex;align-items:center;gap:5px;padding:0 10px;height:100%;
   background:transparent;border:none;border-left:1px solid var(--border);
   color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;
@@ -338,9 +338,20 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 }
 #new-battle-btn{border-left:none;border-right:1px solid var(--border);}
 #new-battle-btn:hover{color:var(--gold);background:rgba(212,168,67,.08);}
-#new-lore-btn:hover{color:var(--gold);background:rgba(212,168,67,.06);}
-#new-lore-btn svg{flex-shrink:0;}
-#new-blank-lore-btn:hover{color:var(--gold);background:rgba(212,168,67,.06);}
+#lore-add-btn:hover{color:var(--gold);background:rgba(212,168,67,.06);}
+#lore-add-wrap{position:relative;display:flex;align-items:stretch;}
+#lore-add-menu{
+  position:absolute;bottom:calc(100% + 4px);right:0;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;min-width:170px;z-index:200;
+  box-shadow:0 4px 14px rgba(0,0,0,.45);overflow:hidden;
+}
+#lore-add-menu button{
+  display:block;width:100%;text-align:left;padding:9px 14px;
+  background:none;border:none;border-radius:0;color:var(--text);
+  cursor:pointer;font-size:.88em;white-space:nowrap;
+}
+#lore-add-menu button:hover{background:var(--surface3);}
 
 /* Drag-to-reorder styles */
 .tab.dragging{opacity:0.35;cursor:grabbing;}
@@ -562,15 +573,13 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 }
 .md-content tr:nth-child(even) td{background:rgba(255,255,255,.02);}
 
-/* Wiki links */
-.wiki-link{
-  color:var(--gold);background:rgba(212,168,67,.08);
-  border:1px solid rgba(212,168,67,.22);
-  border-radius:4px;padding:0 5px;font-size:.93em;
-  display:inline-block;cursor:default;
-  transition:background .15s,border-color .15s;
+/* Encounter links */
+a.encounter-link{
+  color:var(--gold);font-weight:700;text-decoration:none;
+  border-bottom:1px dashed rgba(212,168,67,.5);cursor:pointer;
+  transition:color .15s,border-color .15s;
 }
-.wiki-link:hover{background:rgba(212,168,67,.16);border-color:rgba(212,168,67,.4);}
+a.encounter-link:hover{color:var(--text);border-color:var(--text-muted);}
 
 /* Frontmatter stripped indicator */
 .md-meta{
@@ -707,6 +716,9 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .empty-title{font-size:20px;font-weight:600;color:var(--text-muted);font-family:'Cinzel',serif;letter-spacing:.1em;}
 .empty-sub{font-size:15px;max-width:360px;line-height:1.6;font-style:italic;}
 #encounter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;}
+#no-battles-state{flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;text-align:center;padding:2rem;}
+.no-battles-msg{font-size:1.1em;font-weight:600;color:var(--text-dim);}
+.no-battles-hint{font-size:.9em;line-height:1.6;color:var(--text-muted);}
 
 .combat-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;position:relative;box-shadow:inset 0 1px 0 rgba(255,240,200,.04),0 2px 8px rgba(0,0,0,.3);transition:border-color .2s,box-shadow .2s;}
 .combat-card:hover{border-color:var(--border2);box-shadow:inset 0 1px 0 rgba(255,240,200,.06),0 4px 16px rgba(0,0,0,.4);}
@@ -1325,7 +1337,6 @@ body.toolkit-open #toolkit-toggle{right:var(--toolkit-w);}
   body{overscroll-behavior:none;} /* prevent iOS bounce scroll */
   #gm-badge{display:none;}
   .tab-title{max-width:90px;}
-  #new-lore-btn span{display:none;}
 
   /* Sidebar becomes a slide-in overlay drawer */
   #combat-tab-panel{position:relative;}
@@ -1389,8 +1400,13 @@ body.toolkit-open #toolkit-toggle{right:var(--toolkit-w);}
 <div id="tabbar">
   <div id="all-tabs"></div>
   <button id="new-battle-btn" onclick="newBattle()" title="New battle tab">⚔ +</button>
-  <button id="new-lore-btn" onclick="document.getElementById('tab-upload-input').click()" title="Add lore tab from .md file"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z"/></svg> +</button>
-  <button id="new-blank-lore-btn" onclick="newBlankTab()" title="New blank lore tab">📝 +</button>
+  <div id="lore-add-wrap">
+    <button id="lore-add-btn" onclick="toggleLoreMenu(event)" title="Add lore tab">📜 +</button>
+    <div id="lore-add-menu" style="display:none">
+      <button onclick="newBlankTab();closeLoreMenu()">📝 New Blank Tab</button>
+      <button onclick="document.getElementById('tab-upload-input').click();closeLoreMenu()">📂 Upload .md File</button>
+    </div>
+  </div>
   <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple style="display:none" onchange="handleFileUpload(this.files)">
   <div id="gm-badge">
     <span>THE MOTHER TREE</span>
@@ -1469,6 +1485,10 @@ body.toolkit-open #toolkit-toggle{right:var(--toolkit-w);}
           <div class="empty-sub">Open the sidebar, browse adversaries, spend your Battle Points, then hit <strong>▶ Begin Battle</strong>.</div>
         </div>
         <div id="encounter-grid" style="display:none"></div>
+        <div id="no-battles-state" style="display:none">
+          <p class="no-battles-msg">No battles open</p>
+          <p class="no-battles-hint">Click <strong>⚔ +</strong> to start a new battle,<br>or open one via an encounter link in a Lore tab.</p>
+        </div>
       </div>
       <div id="status-bar">
         <div class="status-item">Active: <span id="status-active">0</span></div>
@@ -1657,7 +1677,7 @@ function _addDragHandlers(tab){
 function renderAllTabs(){
   const container=document.getElementById('all-tabs');
   container.innerHTML='';
-  const showClose=battles.length>1;
+  const showClose=battles.length>=1;
   tabOrder.forEach(function(entry){
     const tab=document.createElement('div');
     if(entry.type==='battle'){
@@ -1708,7 +1728,6 @@ function _panelHTML(id,html){
     +'<tr><td><code>&gt; text</code></td><td>Blockquote</td></tr>'
     +'<tr><td><code>`code`</code></td><td>Inline code</td></tr>'
     +'<tr><td><code>---</code></td><td>Divider</td></tr>'
-    +'<tr><td><code>[[Note]]</code></td><td>Wiki link</td></tr>'
     +'<tr><td><code>[[encounter:Name]]</code></td><td>Load encounter</td></tr>'
     +'</tbody></table>'
     +'</div>'
@@ -1807,6 +1826,16 @@ function newBlankTab(){
   toggleLoreEdit(id);
 }
 
+function toggleLoreMenu(e){
+  e.stopPropagation();
+  var m=document.getElementById('lore-add-menu');
+  m.style.display=m.style.display==='none'?'':'none';
+}
+function closeLoreMenu(){
+  var m=document.getElementById('lore-add-menu');
+  if(m)m.style.display='none';
+}
+
 // §BATTLE_TABS ═══════════════════════════════════════════════════════════
 // BATTLE TAB MANAGEMENT
 // ═══════════════════════════════════════════════════════════
@@ -1818,6 +1847,7 @@ function saveBattleState(){
 }
 
 function loadBattleState(b){
+  if(!b)return;
   battleStarted=b.battleStarted;round=b.round;
   playerCount=b.playerCount;bpTotal=3*playerCount+2;
   cart=b.cart;combatants=b.combatants;iid=b.iid;
@@ -1867,19 +1897,36 @@ function switchBattle(id){
 
 function closeBattle(id,e){
   e.stopPropagation();
-  if(battles.length<=1)return;
   const b=battles.find(x=>x.id===id);
   if(b&&b.battleStarted&&!confirm(`Close "${b.name}"? This battle is in progress.`))return;
   battles=battles.filter(x=>x.id!==id);
   tabOrder=tabOrder.filter(x=>!(x.type==='battle'&&x.id===id));
   if(activeBattleId===id){
-    activeBattleId=battles[battles.length-1].id;
-    loadBattleState(currentBattle());
-    activeTab='combat';
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
-    applyBattleToDOM();
+    if(battles.length===0){
+      activeBattleId=null;
+      const firstLore=tabOrder.find(x=>x.type==='lore');
+      if(firstLore){
+        switchTab(firstLore.id);
+      }else{
+        activeTab='combat';
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+        _showNoBattlesState();
+      }
+    }else{
+      activeBattleId=battles[battles.length-1].id;
+      loadBattleState(currentBattle());
+      activeTab='combat';
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+      applyBattleToDOM();
+    }
   }
   renderAllTabs();saveSession();
+}
+
+function _showNoBattlesState(){
+  document.getElementById('no-battles-state').style.display='flex';
+  document.getElementById('encounter-grid').style.display='none';
+  document.getElementById('empty-state').style.display='none';
 }
 
 function renameBattle(id){
@@ -1941,8 +1988,10 @@ function openMdFile(filename,raw){
 function renderMd(raw,title){
   // Strip YAML frontmatter
   let content=raw.replace(/^---[\s\S]*?---\n?/,'').trim();
-  // Convert wiki links [[X]] to styled spans
-  content=content.replace(/\[\[([^\]]+)\]\]/g,'<span class="wiki-link">$1</span>');
+  // Encounter links: [[encounter:Name]] → clickable link
+  content=content.replace(/\[\[encounter:([^\]]+)\]\]/g,function(_,name){
+    return '<a class="encounter-link" data-encounter-name="'+name.replace(/"/g,'&quot;')+'" href="#">⚔ '+name+'</a>';
+  });
   // Parse markdown
   marked.setOptions({breaks:true,gfm:true});
   let html=marked.parse(content);
@@ -2041,6 +2090,7 @@ var SESSION_KEY='motherTree_session';
 var _tabDragging=false; // true while a tab is being drag-reordered
 // Battle tab management
 var battles=[],activeBattleId=null,battleTabCounter=0;
+var _sessionHadBattles=false;
 
 // §BP_SIDEBAR
 function toggleSidebar(){
@@ -2447,13 +2497,16 @@ function closeSaveEncounterPrompt(){
 function confirmSaveEncounter(){
   var name=document.getElementById('sep-name').value.trim();
   if(!name)return;
-  var enc={
-    id:'encounter_'+Date.now(),
-    name:name,
-    adversaries:JSON.parse(JSON.stringify(cart)),
-    savedAt:new Date().toISOString()
-  };
-  db_put('saved_encounters',enc).then(function(){
+  db_getAll('saved_encounters').then(function(existing){
+    var dupe=(existing||[]).find(function(e){return e.name.toLowerCase()===name.toLowerCase();});
+    if(dupe&&!confirm('Encounter "'+name+'" already exists. Overwrite it?'))return;
+    var enc={
+      id:dupe?dupe.id:'encounter_'+Date.now(),
+      name:name,
+      adversaries:JSON.parse(JSON.stringify(cart)),
+      savedAt:new Date().toISOString()
+    };
+    db_put('saved_encounters',enc).then(function(){
     var linkCode='[[encounter:'+name+']]';
     var codeEl=document.getElementById('sep-link-code');
     if(codeEl)codeEl.textContent=linkCode;
@@ -2462,7 +2515,8 @@ function confirmSaveEncounter(){
     showToast('"'+name+'" saved.');
     var b=battles.find(function(x){return x.id===activeBattleId;});
     if(b){b.name=name;renderAllTabs();saveSession();}
-  }).catch(function(e){showToast('Save failed: '+e.message);});
+    }).catch(function(e){showToast('Save failed: '+e.message);});
+  });
 }
 
 function copySepLink(){
@@ -2522,6 +2576,25 @@ function _doLoadEncounter(enc){
   modal.querySelector('.elm-replace').onclick=function(){modal.remove();_applyEncounter(enc,'replace');};
   modal.querySelector('.elm-add').onclick=function(){modal.remove();_applyEncounter(enc,'add');};
   modal.querySelector('.elm-cancel').onclick=function(){modal.remove();};
+}
+
+function _openEncounterAsNewBattle(enc){
+  saveBattleState();
+  var id='battle-'+Date.now();
+  var b={id,name:enc.name,battleStarted:false,round:1,playerCount,cart:[],combatants:[],iid:0};
+  battles.push(b);
+  tabOrder.push({type:'battle',id});
+  activeBattleId=id;
+  loadBattleState(b);
+  var advs=JSON.parse(JSON.stringify(enc.adversaries||[]));
+  advs.forEach(function(a){cart.push(Object.assign({},a,{_iid:++iid}));});
+  b.cart=cart;b.iid=iid;
+  activeTab='combat';
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  renderAllTabs();
+  applyBattleToDOM();
+  saveSession();
+  showToast('"'+enc.name+'" opened.');
 }
 
 function _applyEncounter(enc,mode){
@@ -2828,6 +2901,7 @@ function loadSession(){
     var state=JSON.parse(raw);
 
     // ── Restore battles ──
+    if(state.battles&&Array.isArray(state.battles)){_sessionHadBattles=true;}
     if(state.battles&&state.battles.length){
       battleTabCounter=state.battleTabCounter||state.battles.length;
       battles=state.battles.map(function(b){
@@ -2966,6 +3040,7 @@ function renderList(){
 
 // ── Single event-delegated click handler for adv-list ────
 document.addEventListener('click',function(e){
+  if(!e.target.closest('#lore-add-wrap'))closeLoreMenu();
   var setCatBtn=e.target.closest('[data-setcat]');
   if(setCatBtn){setRulesCat(setCatBtn.dataset.setcat);return;}
   // add to queue
@@ -3073,7 +3148,7 @@ document.addEventListener('click',function(e){
     db_getAll('saved_encounters').then(function(encs){
       var enc=(encs||[]).find(function(x){return x.name===encName;});
       if(!enc){showToast('No saved encounter named "'+encName+'" found.');return;}
-      _doLoadEncounter(enc);
+      _openEncounterAsNewBattle(enc);
     });
     return;
   }
@@ -4686,8 +4761,8 @@ function addOfficialEnv(){
 loadCustomAdv();
 (function init(){
   loadSession();
-  // Create the first battle if no session existed
-  if(battles.length===0){
+  // Create the first battle if no session existed (not if user intentionally closed all)
+  if(battles.length===0&&!_sessionHadBattles){
     battleTabCounter=1;
     const b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
     battles.push(b);
@@ -4696,7 +4771,9 @@ loadCustomAdv();
     renderAllTabs();
   }
   updateBP();buildFilters();renderList();
-  if(battleStarted){renderCombat();}else{renderStage();}
+  if(battles.length===0){
+    _showNoBattlesState();
+  }else if(battleStarted){renderCombat();}else{renderStage();}
   statusBar();
   restoreToolkitState();
   if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}

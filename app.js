@@ -49,7 +49,7 @@ function _addDragHandlers(tab){
 function renderAllTabs(){
   const container=document.getElementById('all-tabs');
   container.innerHTML='';
-  const showClose=battles.length>1;
+  const showClose=battles.length>=1;
   tabOrder.forEach(function(entry){
     const tab=document.createElement('div');
     if(entry.type==='battle'){
@@ -100,7 +100,6 @@ function _panelHTML(id,html){
     +'<tr><td><code>&gt; text</code></td><td>Blockquote</td></tr>'
     +'<tr><td><code>`code`</code></td><td>Inline code</td></tr>'
     +'<tr><td><code>---</code></td><td>Divider</td></tr>'
-    +'<tr><td><code>[[Note]]</code></td><td>Wiki link</td></tr>'
     +'<tr><td><code>[[encounter:Name]]</code></td><td>Load encounter</td></tr>'
     +'</tbody></table>'
     +'</div>'
@@ -199,6 +198,16 @@ function newBlankTab(){
   toggleLoreEdit(id);
 }
 
+function toggleLoreMenu(e){
+  e.stopPropagation();
+  var m=document.getElementById('lore-add-menu');
+  m.style.display=m.style.display==='none'?'':'none';
+}
+function closeLoreMenu(){
+  var m=document.getElementById('lore-add-menu');
+  if(m)m.style.display='none';
+}
+
 // §BATTLE_TABS ═══════════════════════════════════════════════════════════
 // BATTLE TAB MANAGEMENT
 // ═══════════════════════════════════════════════════════════
@@ -210,6 +219,7 @@ function saveBattleState(){
 }
 
 function loadBattleState(b){
+  if(!b)return;
   battleStarted=b.battleStarted;round=b.round;
   playerCount=b.playerCount;bpTotal=3*playerCount+2;
   cart=b.cart;combatants=b.combatants;iid=b.iid;
@@ -259,19 +269,36 @@ function switchBattle(id){
 
 function closeBattle(id,e){
   e.stopPropagation();
-  if(battles.length<=1)return;
   const b=battles.find(x=>x.id===id);
   if(b&&b.battleStarted&&!confirm(`Close "${b.name}"? This battle is in progress.`))return;
   battles=battles.filter(x=>x.id!==id);
   tabOrder=tabOrder.filter(x=>!(x.type==='battle'&&x.id===id));
   if(activeBattleId===id){
-    activeBattleId=battles[battles.length-1].id;
-    loadBattleState(currentBattle());
-    activeTab='combat';
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
-    applyBattleToDOM();
+    if(battles.length===0){
+      activeBattleId=null;
+      const firstLore=tabOrder.find(x=>x.type==='lore');
+      if(firstLore){
+        switchTab(firstLore.id);
+      }else{
+        activeTab='combat';
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+        _showNoBattlesState();
+      }
+    }else{
+      activeBattleId=battles[battles.length-1].id;
+      loadBattleState(currentBattle());
+      activeTab='combat';
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+      applyBattleToDOM();
+    }
   }
   renderAllTabs();saveSession();
+}
+
+function _showNoBattlesState(){
+  document.getElementById('no-battles-state').style.display='flex';
+  document.getElementById('encounter-grid').style.display='none';
+  document.getElementById('empty-state').style.display='none';
 }
 
 function renameBattle(id){
@@ -333,8 +360,10 @@ function openMdFile(filename,raw){
 function renderMd(raw,title){
   // Strip YAML frontmatter
   let content=raw.replace(/^---[\s\S]*?---\n?/,'').trim();
-  // Convert wiki links [[X]] to styled spans
-  content=content.replace(/\[\[([^\]]+)\]\]/g,'<span class="wiki-link">$1</span>');
+  // Encounter links: [[encounter:Name]] → clickable link
+  content=content.replace(/\[\[encounter:([^\]]+)\]\]/g,function(_,name){
+    return '<a class="encounter-link" data-encounter-name="'+name.replace(/"/g,'&quot;')+'" href="#">⚔ '+name+'</a>';
+  });
   // Parse markdown
   marked.setOptions({breaks:true,gfm:true});
   let html=marked.parse(content);
@@ -433,6 +462,7 @@ var SESSION_KEY='motherTree_session';
 var _tabDragging=false; // true while a tab is being drag-reordered
 // Battle tab management
 var battles=[],activeBattleId=null,battleTabCounter=0;
+var _sessionHadBattles=false;
 
 // §BP_SIDEBAR
 function toggleSidebar(){
@@ -839,13 +869,16 @@ function closeSaveEncounterPrompt(){
 function confirmSaveEncounter(){
   var name=document.getElementById('sep-name').value.trim();
   if(!name)return;
-  var enc={
-    id:'encounter_'+Date.now(),
-    name:name,
-    adversaries:JSON.parse(JSON.stringify(cart)),
-    savedAt:new Date().toISOString()
-  };
-  db_put('saved_encounters',enc).then(function(){
+  db_getAll('saved_encounters').then(function(existing){
+    var dupe=(existing||[]).find(function(e){return e.name.toLowerCase()===name.toLowerCase();});
+    if(dupe&&!confirm('Encounter "'+name+'" already exists. Overwrite it?'))return;
+    var enc={
+      id:dupe?dupe.id:'encounter_'+Date.now(),
+      name:name,
+      adversaries:JSON.parse(JSON.stringify(cart)),
+      savedAt:new Date().toISOString()
+    };
+    db_put('saved_encounters',enc).then(function(){
     var linkCode='[[encounter:'+name+']]';
     var codeEl=document.getElementById('sep-link-code');
     if(codeEl)codeEl.textContent=linkCode;
@@ -854,7 +887,8 @@ function confirmSaveEncounter(){
     showToast('"'+name+'" saved.');
     var b=battles.find(function(x){return x.id===activeBattleId;});
     if(b){b.name=name;renderAllTabs();saveSession();}
-  }).catch(function(e){showToast('Save failed: '+e.message);});
+    }).catch(function(e){showToast('Save failed: '+e.message);});
+  });
 }
 
 function copySepLink(){
@@ -914,6 +948,25 @@ function _doLoadEncounter(enc){
   modal.querySelector('.elm-replace').onclick=function(){modal.remove();_applyEncounter(enc,'replace');};
   modal.querySelector('.elm-add').onclick=function(){modal.remove();_applyEncounter(enc,'add');};
   modal.querySelector('.elm-cancel').onclick=function(){modal.remove();};
+}
+
+function _openEncounterAsNewBattle(enc){
+  saveBattleState();
+  var id='battle-'+Date.now();
+  var b={id,name:enc.name,battleStarted:false,round:1,playerCount,cart:[],combatants:[],iid:0};
+  battles.push(b);
+  tabOrder.push({type:'battle',id});
+  activeBattleId=id;
+  loadBattleState(b);
+  var advs=JSON.parse(JSON.stringify(enc.adversaries||[]));
+  advs.forEach(function(a){cart.push(Object.assign({},a,{_iid:++iid}));});
+  b.cart=cart;b.iid=iid;
+  activeTab='combat';
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
+  renderAllTabs();
+  applyBattleToDOM();
+  saveSession();
+  showToast('"'+enc.name+'" opened.');
 }
 
 function _applyEncounter(enc,mode){
@@ -1220,6 +1273,7 @@ function loadSession(){
     var state=JSON.parse(raw);
 
     // ── Restore battles ──
+    if(state.battles&&Array.isArray(state.battles)){_sessionHadBattles=true;}
     if(state.battles&&state.battles.length){
       battleTabCounter=state.battleTabCounter||state.battles.length;
       battles=state.battles.map(function(b){
@@ -1358,6 +1412,7 @@ function renderList(){
 
 // ── Single event-delegated click handler for adv-list ────
 document.addEventListener('click',function(e){
+  if(!e.target.closest('#lore-add-wrap'))closeLoreMenu();
   var setCatBtn=e.target.closest('[data-setcat]');
   if(setCatBtn){setRulesCat(setCatBtn.dataset.setcat);return;}
   // add to queue
@@ -1465,7 +1520,7 @@ document.addEventListener('click',function(e){
     db_getAll('saved_encounters').then(function(encs){
       var enc=(encs||[]).find(function(x){return x.name===encName;});
       if(!enc){showToast('No saved encounter named "'+encName+'" found.');return;}
-      _doLoadEncounter(enc);
+      _openEncounterAsNewBattle(enc);
     });
     return;
   }
@@ -3078,8 +3133,8 @@ function addOfficialEnv(){
 loadCustomAdv();
 (function init(){
   loadSession();
-  // Create the first battle if no session existed
-  if(battles.length===0){
+  // Create the first battle if no session existed (not if user intentionally closed all)
+  if(battles.length===0&&!_sessionHadBattles){
     battleTabCounter=1;
     const b={id:'battle-1',name:'Battle 1',battleStarted:false,round:1,playerCount:4,cart:[],combatants:[],iid:0};
     battles.push(b);
@@ -3088,7 +3143,9 @@ loadCustomAdv();
     renderAllTabs();
   }
   updateBP();buildFilters();renderList();
-  if(battleStarted){renderCombat();}else{renderStage();}
+  if(battles.length===0){
+    _showNoBattlesState();
+  }else if(battleStarted){renderCombat();}else{renderStage();}
   statusBar();
   restoreToolkitState();
   if(window.innerWidth<=768){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.getElementById('sidebar-toggle').textContent='☰';}
