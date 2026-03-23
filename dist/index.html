@@ -398,9 +398,13 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 }
 
 /* §MARKDOWN_EDITOR */
-.md-edit-btn{
+.md-toolbar{
   position:sticky;top:12px;float:right;
   margin-right:16px;z-index:10;
+  display:flex;align-items:center;gap:4px;
+  position:relative;
+}
+.md-edit-btn{
   padding:4px 10px;
   background:var(--surface2);
   border:1px solid var(--border2);
@@ -416,6 +420,47 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
   background:rgba(212,168,67,.08);
   border-color:var(--gold-dim);
 }
+.md-help-btn{
+  width:26px;height:26px;padding:0;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:5px;
+  color:var(--text-muted);
+  font-size:13px;font-weight:700;
+  cursor:pointer;
+  transition:color .15s,background .15s,border-color .15s;
+}
+.md-help-btn:hover{
+  color:var(--gold);
+  background:rgba(212,168,67,.08);
+  border-color:var(--gold-dim);
+}
+.md-help-popover{
+  position:absolute;top:calc(100% + 6px);right:0;
+  width:280px;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:6px;
+  padding:12px 14px;
+  z-index:20;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+}
+.md-help-popover strong{
+  display:block;margin-bottom:8px;
+  font-family:'Cinzel',serif;font-size:11px;letter-spacing:.06em;
+  color:var(--gold);text-transform:uppercase;
+}
+.md-help-table{width:100%;border-collapse:collapse;font-size:12px;}
+.md-help-table td{padding:3px 6px;color:var(--text-dim);}
+.md-help-table td:first-child{white-space:nowrap;}
+.md-help-table td code{
+  background:var(--surface3);
+  border:1px solid var(--border);
+  border-radius:3px;padding:1px 4px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--gold);
+}
+.md-help-table td:last-child{color:var(--text-muted);padding-left:10px;}
 .md-edit-area{
   position:absolute;inset:0;
   width:100%;height:100%;
@@ -1648,7 +1693,27 @@ function switchTab(id){
 // ── Panel HTML factory (shared by addTab + loadSession) ──
 function _panelHTML(id,html){
   return '<div class="md-panel">'
+    +'<div class="md-toolbar">'
+    +'<button class="md-help-btn" style="display:none" onclick="toggleMdHelp(\''+id+'\')" title="Markdown reference">?</button>'
+    +'<div class="md-help-popover" style="display:none">'
+    +'<strong>Markdown reference</strong>'
+    +'<table class="md-help-table"><tbody>'
+    +'<tr><td><code># Heading 1</code></td><td>Big heading</td></tr>'
+    +'<tr><td><code>## Heading 2</code></td><td>Section heading</td></tr>'
+    +'<tr><td><code>### Heading 3</code></td><td>Subheading</td></tr>'
+    +'<tr><td><code>**text**</code></td><td>Bold</td></tr>'
+    +'<tr><td><code>*text*</code></td><td>Italic</td></tr>'
+    +'<tr><td><code>- item</code></td><td>Bullet list</td></tr>'
+    +'<tr><td><code>1. item</code></td><td>Numbered list</td></tr>'
+    +'<tr><td><code>&gt; text</code></td><td>Blockquote</td></tr>'
+    +'<tr><td><code>`code`</code></td><td>Inline code</td></tr>'
+    +'<tr><td><code>---</code></td><td>Divider</td></tr>'
+    +'<tr><td><code>[[Note]]</code></td><td>Wiki link</td></tr>'
+    +'<tr><td><code>[[encounter:Name]]</code></td><td>Load encounter</td></tr>'
+    +'</tbody></table>'
+    +'</div>'
     +'<button class="md-edit-btn" onclick="toggleLoreEdit(\''+id+'\')">✏ Edit</button>'
+    +'</div>'
     +'<div class="md-content">'+html+'</div>'
     +'</div>';
 }
@@ -1696,6 +1761,7 @@ function toggleLoreEdit(id){
   mdPanel.appendChild(ta);
   mdPanel.classList.add('md-editing');
   panel.querySelector('.md-edit-btn').textContent='👁 Preview';
+  panel.querySelector('.md-help-btn').style.display='';
   ta.focus();
 }
 
@@ -1709,6 +1775,8 @@ function commitLoreEdit(id){
   panel.querySelector('.md-content').innerHTML=renderMd(ta.value,entry?entry.title:'');
   panel.querySelector('.md-content').style.display='';
   ta.remove();
+  panel.querySelector('.md-help-btn').style.display='none';
+  panel.querySelector('.md-help-popover').style.display='none';
   mdPanel.classList.remove('md-editing');
   panel.querySelector('.md-edit-btn').textContent='✏ Edit';
   saveSession();
@@ -1723,8 +1791,15 @@ function cancelLoreEdit(id){
   panel.querySelector('.md-content').innerHTML=renderMd(tabRawMd[id]||'',entry?entry.title:'');
   panel.querySelector('.md-content').style.display='';
   ta.remove();
+  panel.querySelector('.md-help-btn').style.display='none';
+  panel.querySelector('.md-help-popover').style.display='none';
   mdPanel.classList.remove('md-editing');
   panel.querySelector('.md-edit-btn').textContent='✏ Edit';
+}
+
+function toggleMdHelp(id){
+  var popover=document.getElementById('panel-'+id).querySelector('.md-help-popover');
+  popover.style.display=popover.style.display==='none'?'':'none';
 }
 
 function newBlankTab(){
