@@ -58,7 +58,7 @@ GitHub-backed sync via Fine-Grained PAT + private repo. Opt-in, no server requir
 
 ## Suggested Additions
 
-### 💡 S5. Lore Tab Markdown Editor
+### ✅ S5. Lore Tab Markdown Editor
 
 Each lore tab should be editable in-browser — no need to edit the `.md` file externally and re-upload.
 

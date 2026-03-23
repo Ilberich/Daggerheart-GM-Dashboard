@@ -82,6 +82,34 @@ function switchTab(id){
   saveSession();
 }
 
+// ── Panel HTML factory (shared by addTab + loadSession) ──
+function _panelHTML(id,html){
+  return '<div class="md-panel">'
+    +'<div class="md-toolbar">'
+    +'<button class="md-help-btn" style="display:none" onclick="toggleMdHelp(\''+id+'\')" title="Markdown reference">?</button>'
+    +'<div class="md-help-popover" style="display:none">'
+    +'<strong>Markdown reference</strong>'
+    +'<table class="md-help-table"><tbody>'
+    +'<tr><td><code># Heading 1</code></td><td>Big heading</td></tr>'
+    +'<tr><td><code>## Heading 2</code></td><td>Section heading</td></tr>'
+    +'<tr><td><code>### Heading 3</code></td><td>Subheading</td></tr>'
+    +'<tr><td><code>**text**</code></td><td>Bold</td></tr>'
+    +'<tr><td><code>*text*</code></td><td>Italic</td></tr>'
+    +'<tr><td><code>- item</code></td><td>Bullet list</td></tr>'
+    +'<tr><td><code>1. item</code></td><td>Numbered list</td></tr>'
+    +'<tr><td><code>&gt; text</code></td><td>Blockquote</td></tr>'
+    +'<tr><td><code>`code`</code></td><td>Inline code</td></tr>'
+    +'<tr><td><code>---</code></td><td>Divider</td></tr>'
+    +'<tr><td><code>[[Note]]</code></td><td>Wiki link</td></tr>'
+    +'<tr><td><code>[[encounter:Name]]</code></td><td>Load encounter</td></tr>'
+    +'</tbody></table>'
+    +'</div>'
+    +'<button class="md-edit-btn" onclick="toggleLoreEdit(\''+id+'\')">✏ Edit</button>'
+    +'</div>'
+    +'<div class="md-content">'+html+'</div>'
+    +'</div>';
+}
+
 // ── Add lore tab (creates panel + registers in tabOrder) ──
 function addTab(title,html,icon='📜',rawMd=''){
   const id='tab-'+(++tabCounter);
@@ -89,7 +117,7 @@ function addTab(title,html,icon='📜',rawMd=''){
   const panel=document.createElement('div');
   panel.className='tab-panel';
   panel.id='panel-'+id;
-  panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+  panel.innerHTML=_panelHTML(id,html);
   document.getElementById('dynamic-panels').appendChild(panel);
   tabOrder.push({type:'lore',id,title,icon});
   renderAllTabs();
@@ -108,6 +136,67 @@ function closeTab(id,e){
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-combat'));
   }
   renderAllTabs();saveSession();
+}
+
+// ── Lore tab inline editor ──
+function toggleLoreEdit(id){
+  var panel=document.getElementById('panel-'+id);
+  var mdPanel=panel.querySelector('.md-panel');
+  if(mdPanel.classList.contains('md-editing')){commitLoreEdit(id);return;}
+  var ta=document.createElement('textarea');
+  ta.className='md-edit-area';
+  ta.value=tabRawMd[id]||'';
+  ta.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){e.preventDefault();cancelLoreEdit(id);}
+  });
+  panel.querySelector('.md-content').style.display='none';
+  mdPanel.appendChild(ta);
+  mdPanel.classList.add('md-editing');
+  panel.querySelector('.md-edit-btn').textContent='👁 Preview';
+  panel.querySelector('.md-help-btn').style.display='';
+  ta.focus();
+}
+
+function commitLoreEdit(id){
+  var panel=document.getElementById('panel-'+id);
+  var mdPanel=panel.querySelector('.md-panel');
+  var ta=mdPanel.querySelector('.md-edit-area');
+  if(!ta)return;
+  tabRawMd[id]=ta.value;
+  var entry=tabOrder.find(function(e){return e.type==='lore'&&e.id===id;});
+  panel.querySelector('.md-content').innerHTML=renderMd(ta.value,entry?entry.title:'');
+  panel.querySelector('.md-content').style.display='';
+  ta.remove();
+  panel.querySelector('.md-help-btn').style.display='none';
+  panel.querySelector('.md-help-popover').style.display='none';
+  mdPanel.classList.remove('md-editing');
+  panel.querySelector('.md-edit-btn').textContent='✏ Edit';
+  saveSession();
+}
+
+function cancelLoreEdit(id){
+  var panel=document.getElementById('panel-'+id);
+  var mdPanel=panel.querySelector('.md-panel');
+  var ta=mdPanel.querySelector('.md-edit-area');
+  if(!ta)return;
+  var entry=tabOrder.find(function(e){return e.type==='lore'&&e.id===id;});
+  panel.querySelector('.md-content').innerHTML=renderMd(tabRawMd[id]||'',entry?entry.title:'');
+  panel.querySelector('.md-content').style.display='';
+  ta.remove();
+  panel.querySelector('.md-help-btn').style.display='none';
+  panel.querySelector('.md-help-popover').style.display='none';
+  mdPanel.classList.remove('md-editing');
+  panel.querySelector('.md-edit-btn').textContent='✏ Edit';
+}
+
+function toggleMdHelp(id){
+  var popover=document.getElementById('panel-'+id).querySelector('.md-help-popover');
+  popover.style.display=popover.style.display==='none'?'':'none';
+}
+
+function newBlankTab(){
+  var id=addTab('New Tab','','📜','');
+  toggleLoreEdit(id);
 }
 
 // §BATTLE_TABS ═══════════════════════════════════════════════════════════
@@ -1181,7 +1270,7 @@ function loadSession(){
           var html=renderMd(rawMd,entry.title);
           var panel=document.createElement('div');
           panel.className='tab-panel';panel.id='panel-'+entry.id;
-          panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+          panel.innerHTML=_panelHTML(entry.id,html);
           document.getElementById('dynamic-panels').appendChild(panel);
         }
       });
@@ -1196,7 +1285,7 @@ function loadSession(){
         var html=renderMd(t.rawMd||'',t.title);
         var panel=document.createElement('div');
         panel.className='tab-panel';panel.id='panel-'+id;
-        panel.innerHTML='<div class="md-panel"><div class="md-content">'+html+'</div></div>';
+        panel.innerHTML=_panelHTML(id,html);
         document.getElementById('dynamic-panels').appendChild(panel);
       });
     } else {
@@ -2764,7 +2853,7 @@ var ENV_DATA={
   }
 };
 
-// Official Environments from Daggerheart Core Rulebook pp. 243-252
+// Official Environments from Daggerheart SRD
 var OFFICIAL_ENVIRONMENTS=[
   {name:'Abandoned Grove',tier:1,type:'Exploration',desc:'A former druidic grove lying fallow and fully reclaimed by nature.',impulses:['Draw in the curious','Echo the past'],dc:11,adversaries:'Beasts (Bear, Dire Wolf, Glass Snake), Grove Guardians (Minor Treant, Sylvan Soldier, Young Dryad)',features:[{type:'passive',name:'Overgrown Battlefield',text:'There has been a battle here. A PC can make an Instinct Roll to identify evidence. On a success with Hope, learn three details. On a success with Fear, learn two. On a failure, mark a Stress to learn one.'},{type:'action',name:'Barbed Vines',text:'Pick a point within the grove. All targets within Very Close range must succeed on an Agility Reaction Roll or take 1d8+3 physical damage and become Restrained.'},{type:'action',name:'You Are Not Welcome Here',text:'A Young Dryad, two Sylvan Soldiers, and Minor Treants equal to the number of PCs appear to confront the party.'},{type:'action',name:'Defiler',text:'Spend a Fear to summon a Minor Chaos Elemental within Far range of a chosen PC who immediately takes the spotlight.'}]},
   {name:'Ambushed',tier:1,type:'Event',desc:'An ambush is set to catch an unsuspecting party off-guard.',impulses:['Overwhelm','Scatter','Surround'],dc:0,adversaries:'Any',features:[{type:'passive',name:'Relative Strength',text:'The Difficulty of this environment equals that of the adversary with the highest Difficulty.'},{type:'action',name:'Surprise!',text:'The ambushers reveal themselves. You gain 2 Fear, and the spotlight immediately shifts to one of the ambushing adversaries.'}]},
