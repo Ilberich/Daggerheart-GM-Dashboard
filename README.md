@@ -11,14 +11,14 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - **Arsenal sidebar** — 60+ built-in adversaries across 10 types (Solo, Bruiser, Leader, Horde, Ranged, Skulk, Standard, Minion, Support, Social)
 - **Encounter queue** — stage adversaries before starting; save queues as named encounters for reuse
 - **Live combat cards** — HP dots, Stress dots, status conditions (Vulnerable, Hidden, Restrained), ability panels, and mid-battle add/remove
-- **Multiple battle tabs** — prep several encounters at once and switch between them without losing state
+- **Multiple battle tabs** — prep several encounters at once and switch between them without losing state; all tabs are closeable including the last one
 - **Round tracker** — click the round badge to advance
 
 ### Lore Tabs
 - Drag-and-drop `.md` files to open them as wiki-style reference tabs
-- `[[wiki links]]` between notes; `[[encounter:Name]]` links that load saved encounters directly
+- `[[encounter:Name]]` links — clickable gold links that load a saved encounter directly into combat
 - **In-browser editing** — click `✏ Edit` (top-right of any lore tab) to edit the raw markdown; click `👁 Preview` to re-render and save; press `Escape` to cancel without saving
-- **New blank tab** — click the `📝 +` button in the tab bar to create an empty lore tab that opens directly in edit mode
+- **Add lore tab** — click the `📜 +` button in the tab bar for a dropdown: **New Blank Tab** or **Upload .md File**
 
 ### Saved Encounters
 - Save any staged encounter queue with a name
@@ -113,10 +113,9 @@ BP budget = player count × 3 (default). Adjust in the sidebar.
 ## Lore Tab Tips
 
 - Drag any `.md` file onto the browser window to open it as a tab
-- Click `📝 +` in the tab bar to create a blank lore tab and start writing immediately
+- Click `📜 +` in the tab bar → choose **New Blank Tab** or **Upload .md File**
 - Click `✏ Edit` (top-right of any lore tab) to edit in-browser; `Escape` cancels, `👁 Preview` saves
-- Use `[[Note Title]]` inside a note to create wiki-style links
-- Use `[[encounter:Goblin Ambush]]` to create a clickable link that loads that saved encounter
+- Use `[[encounter:Goblin Ambush]]` to create a clickable gold link that loads that saved encounter
 
 ---
 

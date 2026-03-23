@@ -29,8 +29,13 @@
 <div id="tabbar">
   <div id="all-tabs"></div>
   <button id="new-battle-btn" onclick="newBattle()" title="New battle tab">⚔ +</button>
-  <button id="new-lore-btn" onclick="document.getElementById('tab-upload-input').click()" title="Add lore tab from .md file"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z"/></svg> +</button>
-  <button id="new-blank-lore-btn" onclick="newBlankTab()" title="New blank lore tab">📝 +</button>
+  <div id="lore-add-wrap">
+    <button id="lore-add-btn" onclick="toggleLoreMenu(event)" title="Add lore tab">📜 +</button>
+    <div id="lore-add-menu" style="display:none">
+      <button onclick="newBlankTab();closeLoreMenu()">📝 New Blank Tab</button>
+      <button onclick="document.getElementById('tab-upload-input').click();closeLoreMenu()">📂 Upload .md File</button>
+    </div>
+  </div>
   <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple style="display:none" onchange="handleFileUpload(this.files)">
   <div id="gm-badge">
     <span>THE MOTHER TREE</span>
@@ -109,6 +114,10 @@
           <div class="empty-sub">Open the sidebar, browse adversaries, spend your Battle Points, then hit <strong>▶ Begin Battle</strong>.</div>
         </div>
         <div id="encounter-grid" style="display:none"></div>
+        <div id="no-battles-state" style="display:none">
+          <p class="no-battles-msg">No battles open</p>
+          <p class="no-battles-hint">Click <strong>⚔ +</strong> to start a new battle,<br>or open one via an encounter link in a Lore tab.</p>
+        </div>
       </div>
       <div id="status-bar">
         <div class="status-item">Active: <span id="status-active">0</span></div>
