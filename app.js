@@ -869,13 +869,16 @@ function closeSaveEncounterPrompt(){
 function confirmSaveEncounter(){
   var name=document.getElementById('sep-name').value.trim();
   if(!name)return;
-  var enc={
-    id:'encounter_'+Date.now(),
-    name:name,
-    adversaries:JSON.parse(JSON.stringify(cart)),
-    savedAt:new Date().toISOString()
-  };
-  db_put('saved_encounters',enc).then(function(){
+  db_getAll('saved_encounters').then(function(existing){
+    var dupe=(existing||[]).find(function(e){return e.name.toLowerCase()===name.toLowerCase();});
+    if(dupe){showToast('An encounter named "'+name+'" already exists.');return;}
+    var enc={
+      id:'encounter_'+Date.now(),
+      name:name,
+      adversaries:JSON.parse(JSON.stringify(cart)),
+      savedAt:new Date().toISOString()
+    };
+    db_put('saved_encounters',enc).then(function(){
     var linkCode='[[encounter:'+name+']]';
     var codeEl=document.getElementById('sep-link-code');
     if(codeEl)codeEl.textContent=linkCode;
@@ -884,7 +887,8 @@ function confirmSaveEncounter(){
     showToast('"'+name+'" saved.');
     var b=battles.find(function(x){return x.id===activeBattleId;});
     if(b){b.name=name;renderAllTabs();saveSession();}
-  }).catch(function(e){showToast('Save failed: '+e.message);});
+    }).catch(function(e){showToast('Save failed: '+e.message);});
+  });
 }
 
 function copySepLink(){
