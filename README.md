@@ -45,6 +45,11 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - All state saved to **IndexedDB** — survives page refresh
 - **Export / Import JSON** — back up your full session (combat, notes, encounters, library) to a file; restore on any device
 
+### Themes
+- **9 dark themes** — all designed for GM-screen use; switch instantly via the ⚙ Settings modal
+- **Persists across sessions** — your chosen theme is restored on every load
+- Themes: Mother Tree *(default)*, Void Court, Ember Keep, Sunken Archive, Iron Reliquary, Crimson Pact, Verdant Spire, Starfall, Ashwood
+
 ### Adversary .MD Format
 
 Upload adversaries from `.md` files using YAML frontmatter. Required fields: `name`, `type`, `dc`, `hp`, `st`, `maj`, `atk`, `wpn`, `dmg`. Optional: `sev`, `motives`. Abilities go under `## Abilities` using `### Ability Name` headings followed by `**tag** — description`. A `## Tactics` section is ignored (GM-only notes).

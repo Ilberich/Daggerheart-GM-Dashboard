@@ -29,32 +29,6 @@ GitHub-backed sync via Fine-Grained PAT + private repo. Opt-in, no server requir
 
 ---
 
-### 🔲 4. Theme System — GM Dashboard Edition
-9 bespoke themes designed for the GM screen. Each evokes a *setting*, not just a colorway. All are dark (GM-screen friendly).
-
-| # | Name | Vibe | Key Accent | BG |
-|---|------|------|------------|----|
-| — | **Mother Tree** *(default, already live)* | Ancient oak, beeswax, parchment | Amber gold | Warm dark brown |
-| 1 | **Void Court** | Midnight fae, cold starlight, silver silk | Pale ice blue | Blue-black |
-| 2 | **Ember Keep** | Torchlit stone, war camp, forged iron | Burnt orange | Deep red-brown |
-| 3 | **Sunken Archive** | Bioluminescent depths, drowned library | Cyan-teal glow | Deep teal-black |
-| 4 | **Iron Reliquary** | Fortress armory, gunmetal, serious | Steel blue | Cool charcoal |
-| 5 | **Crimson Pact** | Blood oath, forbidden magic | Rose-magenta | Deep violet-black |
-| 6 | **Verdant Spire** | Living tower, druid grove, spore lanterns | Leaf green | Forest black-green |
-| 7 | **Starfall** | Astronomical observatory, gold leaf on vellum | Warm star gold | Midnight navy |
-| 8 | **Ashwood** | Quiet hearth, elder's study, worn leather | Sage green | Neutral warm grey |
-
-- [ ] Define `THEMES{}` object in `app.js` with all 9 CSS variable sets
-- [ ] Add `applyTheme(name)` — sets each CSS variable on `document.documentElement.style`
-- [ ] Add `restoreTheme()` — reads from `db_setting('theme')`, falls back to `'Mother Tree'`
-- [ ] Call `restoreTheme()` from `init()`
-- [ ] Add theme picker button + overlay to `index.html` (tab bar, right side)
-- [ ] Style picker in `styles.css`: `#theme-btn`, `#theme-picker`, `.theme-swatch`, `.theme-swatch.active`
-- [ ] Persist selected theme via `db_setting('theme')`
-
-**Files:** `app.js` (THEMES, applyTheme, restoreTheme), `styles.css` (picker styles), `index.html` (picker HTML in tab bar)
-
----
 
 ## Suggested Additions
 
@@ -95,6 +69,33 @@ Each lore tab should be editable in-browser — no need to edit the `.md` file e
 > Items below are done and kept for reference only.
 
 ## ✅ Required Tasks
+
+### ✅ 4. Theme System — GM Dashboard Edition
+9 bespoke themes designed for the GM screen. Each evokes a *setting*, not just a colorway. All are dark (GM-screen friendly).
+
+| # | Name | Vibe | Key Accent | BG |
+|---|------|------|------------|----|
+| — | **Mother Tree** *(default, already live)* | Ancient oak, beeswax, parchment | Amber gold | Warm dark brown |
+| 1 | **Void Court** | Midnight fae, cold starlight, silver silk | Pale ice blue | Blue-black |
+| 2 | **Ember Keep** | Torchlit stone, war camp, forged iron | Burnt orange | Deep red-brown |
+| 3 | **Sunken Archive** | Bioluminescent depths, drowned library | Cyan-teal glow | Deep teal-black |
+| 4 | **Iron Reliquary** | Fortress armory, gunmetal, serious | Steel blue | Cool charcoal |
+| 5 | **Crimson Pact** | Blood oath, forbidden magic | Rose-magenta | Deep violet-black |
+| 6 | **Verdant Spire** | Living tower, druid grove, spore lanterns | Leaf green | Forest black-green |
+| 7 | **Starfall** | Astronomical observatory, gold leaf on vellum | Warm star gold | Midnight navy |
+| 8 | **Ashwood** | Quiet hearth, elder's study, worn leather | Sage green | Neutral warm grey |
+
+- [x] Define `THEMES{}` object in `app.js` with all 9 CSS variable sets
+- [x] Add `applyTheme(name)` — sets each CSS variable on `document.documentElement.style`
+- [x] Add `restoreTheme()` — reads from `db_setting('theme')`, falls back to `'Mother Tree'`
+- [x] Call `restoreTheme()` from `init()`
+- [x] Add theme picker button + overlay to `index.html` (tab bar, right side)
+- [x] Style picker in `styles.css`: `#theme-btn`, `#theme-picker`, `.theme-swatch`, `.theme-swatch.active`
+- [x] Persist selected theme via `db_setting('theme')`
+
+**Files:** `app.js` (THEMES, applyTheme, restoreTheme), `styles.css` (picker styles), `index.html` (picker HTML in tab bar)
+
+---
 
 ### ✅ 1. Go Fully Local (No CDN)
 All external dependencies removed. The app now works with no internet connection.
