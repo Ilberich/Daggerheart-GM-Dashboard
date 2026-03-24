@@ -89,8 +89,8 @@ Each lore tab should be editable in-browser — no need to edit the `.md` file e
 - [x] Add `applyTheme(name)` — sets each CSS variable on `document.documentElement.style`
 - [x] Add `restoreTheme()` — reads from `db_setting('theme')`, falls back to `'Mother Tree'`
 - [x] Call `restoreTheme()` from `init()`
-- [x] Add theme picker button + overlay to `index.html` (tab bar, right side)
-- [x] Style picker in `styles.css`: `#theme-btn`, `#theme-picker`, `.theme-swatch`, `.theme-swatch.active`
+- [x] Add theme `<select>` dropdown to the Settings modal in `index.html`
+- [x] Style dropdown in `styles.css`: `.sm-theme-row`, `.sm-theme-label`, `.sm-select`
 - [x] Persist selected theme via `db_setting('theme')`
 
 **Files:** `app.js` (THEMES, applyTheme, restoreTheme), `styles.css` (picker styles), `index.html` (picker HTML in tab bar)
