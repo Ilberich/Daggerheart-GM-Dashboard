@@ -692,6 +692,9 @@ a.encounter-link:hover{color:var(--text);border-color:var(--text-muted);}
 .sm-btn:hover{border-color:var(--gold);color:var(--gold);}
 .sm-btn-import{display:flex;align-items:center;justify-content:center;gap:6px;}
 .sm-status{margin-top:14px;font-size:13px;color:var(--text-muted);min-height:20px;}
+.sm-theme-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.sm-theme-label{font-size:12px;color:var(--text-dim);white-space:nowrap;}
+.sm-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-size:13px;cursor:pointer;}
 
 /* §SAVED_ENCOUNTERS */
 #btn-save-enc{background:transparent;border-color:var(--green-dim);color:var(--green);}
