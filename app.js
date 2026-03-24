@@ -385,6 +385,126 @@ document.addEventListener('drop',e=>{
   if(files.length)files.forEach(f=>{const r=new FileReader();r.onload=ev=>openMdFile(f.name,ev.target.result);r.readAsText(f);});
 });
 
+// §THEMES ═══════════════════════════════════════════════════════════════
+// THEME SYSTEM
+// ═══════════════════════════════════════════════════════════════════════
+var currentTheme='Mother Tree';
+
+const THEMES={
+  'Mother Tree':{
+    '--bg':'#0e0c0a','--surface':'#15120e','--surface2':'#1e1a13','--surface3':'#272019',
+    '--border':'#38301f','--border2':'#4e4028',
+    '--text':'#e8e0d0','--text-dim':'#c4b89a','--text-muted':'#7a6a54',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#d4a843','--gold-dim':'#8a6a1e',
+    '--green':'#5a9e72','--green-dim':'#2e5e3e',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(212,168,67,.18)'
+  },
+  'Void Court':{
+    '--bg':'#080c12','--surface':'#0d1220','--surface2':'#131b2e','--surface3':'#1a2438',
+    '--border':'#1e2e48','--border2':'#2a3e5e',
+    '--text':'#d8e4f0','--text-dim':'#9ab0c8','--text-muted':'#4a6080',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#a8c8e8','--gold-dim':'#5a88b0',
+    '--green':'#4a90b8','--green-dim':'#2a5878',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(168,200,232,.14)'
+  },
+  'Ember Keep':{
+    '--bg':'#120a06','--surface':'#1e1008','--surface2':'#2a1810','--surface3':'#342018',
+    '--border':'#4a2818','--border2':'#603420',
+    '--text':'#f0dcc8','--text-dim':'#c8a888','--text-muted':'#786040',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#d4682a','--gold-dim':'#8a3e10',
+    '--green':'#7a5a30','--green-dim':'#503a18',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(212,104,42,.18)'
+  },
+  'Sunken Archive':{
+    '--bg':'#060f10','--surface':'#0a1820','--surface2':'#102028','--surface3':'#182c34',
+    '--border':'#1e3840','--border2':'#284a54',
+    '--text':'#c8f0ec','--text-dim':'#7ab8b0','--text-muted':'#3a6860',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#2dd4c8','--gold-dim':'#128a80',
+    '--green':'#2a9890','--green-dim':'#106860',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(45,212,200,.12)'
+  },
+  'Iron Reliquary':{
+    '--bg':'#0a0c10','--surface':'#10141c','--surface2':'#181c28','--surface3':'#1e2430',
+    '--border':'#282e3e','--border2':'#343c50',
+    '--text':'#d8dce8','--text-dim':'#9098b0','--text-muted':'#4a5068',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#7a9ab8','--gold-dim':'#485a70',
+    '--green':'#5a7898','--green-dim':'#384858',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(122,154,184,.15)'
+  },
+  'Crimson Pact':{
+    '--bg':'#0e060e','--surface':'#180a18','--surface2':'#220e22','--surface3':'#2c142c',
+    '--border':'#401840','--border2':'#542054',
+    '--text':'#f0d0e8','--text-dim':'#c088b0','--text-muted':'#784068',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#d44878','--gold-dim':'#8a2448',
+    '--green':'#a03870','--green-dim':'#681848',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(212,72,120,.18)'
+  },
+  'Verdant Spire':{
+    '--bg':'#060e08','--surface':'#0a1810','--surface2':'#102018','--surface3':'#162a20',
+    '--border':'#1e3828','--border2':'#284a34',
+    '--text':'#c8f0d0','--text-dim':'#80b890','--text-muted':'#386848',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#4ab870','--gold-dim':'#1e7840',
+    '--green':'#3a9858','--green-dim':'#186038',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(74,184,112,.14)'
+  },
+  'Starfall':{
+    '--bg':'#060810','--surface':'#0a0e1c','--surface2':'#101628','--surface3':'#181e32',
+    '--border':'#202840','--border2':'#2c3650',
+    '--text':'#f0e8c8','--text-dim':'#b8a880','--text-muted':'#5a5030',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#d4b848','--gold-dim':'#887820',
+    '--green':'#a08840','--green-dim':'#685818',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(212,184,72,.16)'
+  },
+  'Ashwood':{
+    '--bg':'#0c0e0c','--surface':'#141614','--surface2':'#1c1e1c','--surface3':'#242624',
+    '--border':'#303430','--border2':'#3e423e',
+    '--text':'#dce8dc','--text-dim':'#a0b4a0','--text-muted':'#607060',
+    '--hope':'#6366f1','--hope-dim':'#4a4db8','--hope-glow':'rgba(99,102,241,.32)',
+    '--fear':'#c8403a','--fear-dim':'#8a2820','--fear-glow':'rgba(200,64,58,.32)',
+    '--gold':'#8ab898','--gold-dim':'#4a7858',
+    '--green':'#6a9878','--green-dim':'#3a6048',
+    '--hp-color':'#c8403a','--stress-color':'#6366f1',
+    '--ink-line':'rgba(138,184,152,.14)'
+  }
+};
+
+function applyTheme(name){
+  currentTheme=name||'Mother Tree';
+  var t=THEMES[currentTheme]||THEMES['Mother Tree'];
+  var root=document.documentElement.style;
+  Object.entries(t).forEach(function(e){root.setProperty(e[0],e[1]);});
+}
+
+function restoreTheme(){
+  return db_setting('theme').then(function(name){
+    applyTheme(name||'Mother Tree');
+  });
+}
+
 // §COMBAT_DATA ═══════════════════════════════════════════════════════════
 // COMBAT TRACKER DATA
 // ═══════════════════════════════════════════════════════════
