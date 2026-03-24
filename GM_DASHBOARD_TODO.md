@@ -93,7 +93,7 @@ Each lore tab should be editable in-browser — no need to edit the `.md` file e
 - [x] Style dropdown in `styles.css`: `.sm-theme-row`, `.sm-theme-label`, `.sm-select`
 - [x] Persist selected theme via `db_setting('theme')`
 
-**Files:** `app.js` (THEMES, applyTheme, restoreTheme), `styles.css` (picker styles), `index.html` (picker HTML in tab bar)
+**Files:** `app.js` (§THEMES, applyTheme, restoreTheme), `styles.css` (picker styles), `index.html` (picker `<select>` in Settings modal)
 
 ---
 

@@ -223,9 +223,10 @@ var SESSION_KEY     // 'motherTree_session'
 
 **What is persisted:** `playerCount`, `round`, `battleStarted`, `iid`, `cart[]`, `combatants[]` (with `hp_m`/`st_m`/`defeated`), `activeTabIdx`, `tabs[]` (title, icon, rawMd).
 
-### Init — lines 560–566
+### Init — lines ~3255+
 ```js
 loadCustomAdv();        // merge persisted custom adversaries into ADV[]
+restoreTheme().catch(function(){});  // fire-and-forget theme restore before first render
 (function init() {
   loadSession();        // restore session state
   updateBP();           // recalculate BP from restored playerCount
