@@ -40,7 +40,7 @@ All themes are dark. `Mother Tree` is the existing default and remains unchanged
 
 ## CSS Custom Properties Per Theme
 
-Each theme defines values for all 24 theme-controlled CSS vars on `:root`:
+Each theme defines values for all 22 theme-controlled CSS vars on `:root`:
 
 ```
 --bg, --surface, --surface2, --surface3
