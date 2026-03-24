@@ -85,9 +85,9 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 #lore-add-btn:hover{color:var(--gold);background:rgba(212,168,67,.06);}
 #lore-add-wrap{position:relative;display:flex;align-items:stretch;}
 #lore-add-menu{
-  position:absolute;bottom:calc(100% + 4px);right:0;
+  position:fixed;top:var(--tabbar-h);right:0;
   background:var(--surface2);border:1px solid var(--border);
-  border-radius:6px;min-width:170px;z-index:200;
+  border-radius:0 0 6px 6px;min-width:170px;z-index:300;
   box-shadow:0 4px 14px rgba(0,0,0,.45);overflow:hidden;
 }
 #lore-add-menu button{
