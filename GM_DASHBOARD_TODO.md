@@ -58,6 +58,12 @@ GitHub-backed sync via Fine-Grained PAT + private repo. Opt-in, no server requir
 
 ## Suggested Additions
 
+### 🔲 S6. Remove App Title "The Mother Tree"
+
+The app should not be titled "The Mother Tree" — that name is reserved for the default theme only. Remove or replace all instances of the name used as an app/UI title (page title, GM badge, localStorage keys, manifest, etc.). The theme name `Mother Tree` may remain.
+
+---
+
 ### ✅ S5. Lore Tab Markdown Editor
 
 Each lore tab should be editable in-browser — no need to edit the `.md` file externally and re-upload.
