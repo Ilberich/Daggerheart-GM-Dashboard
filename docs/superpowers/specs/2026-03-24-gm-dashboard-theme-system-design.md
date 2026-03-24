@@ -40,7 +40,7 @@ All themes are dark. `Mother Tree` is the existing default and remains unchanged
 
 ## CSS Custom Properties Per Theme
 
-Each theme defines values for all 22 CSS vars currently on `:root`:
+Each theme defines values for all 24 theme-controlled CSS vars on `:root`:
 
 ```
 --bg, --surface, --surface2, --surface3
@@ -54,6 +54,8 @@ Each theme defines values for all 22 CSS vars currently on `:root`:
 --ink-line
 ```
 
+Note: `--hope-glow` and `--fear-glow` must be included in every theme object — they are used for `box-shadow` glows on hope/fear tokens and will silently fall back to the default amber values if omitted.
+
 `--sidebar-w` and `--tabbar-h` are layout constants — not theme-controlled.
 
 ---
@@ -62,8 +64,12 @@ Each theme defines values for all 22 CSS vars currently on `:root`:
 
 ### `app.js` — new `§THEMES` section
 
+Add a `§THEMES` anchor before the existing `§COMBAT_DATA` section. Introduce a module-level state variable `currentTheme` to track the active theme name (used by `openSettingsModal()` to sync the select):
+
 ```js
 // §THEMES
+var currentTheme = 'Mother Tree';
+
 const THEMES = {
   'Mother Tree': { '--bg': '#0e0c0a', '--surface': '#15120e', ... },
   'Void Court':  { '--bg': '#080c12', '--surface': '#0d1220', ... },
@@ -71,9 +77,10 @@ const THEMES = {
 };
 
 function applyTheme(name) {
-  const t = THEMES[name] || THEMES['Mother Tree'];
+  currentTheme = name || 'Mother Tree';
+  const t = THEMES[currentTheme] || THEMES['Mother Tree'];
   const root = document.documentElement.style;
-  Object.entries(t).forEach(([k, v]) => root.setProperty(k, v));
+  Object.entries(t).forEach(function(entry) { root.setProperty(entry[0], entry[1]); });
 }
 
 function restoreTheme() {
@@ -83,33 +90,61 @@ function restoreTheme() {
 }
 ```
 
-### `init()` — updated promise chain
+### `init()` — startup integration
 
-`restoreTheme()` is called at the start of the `init()` promise chain, before `loadSession()`, so the correct theme is in place before any UI renders.
+`init()` is a synchronous IIFE. `restoreTheme()` is called **before** the IIFE as a fire-and-forget call. Because `db_setting()` uses IndexedDB (async), the theme resolves after the synchronous stack completes but before the browser's first paint (Promise microtasks run before rendering tasks). On first-ever load with no stored theme, `applyTheme('Mother Tree')` is called, which is a no-op since the `:root` defaults are already Mother Tree — so there is no flash in either case.
+
+```js
+restoreTheme().catch(function(){});  // fire-and-forget before init IIFE
+(function init() {
+  loadSession();
+  // ... rest of init unchanged
+})();
+```
+
+### `openSettingsModal()` — sync the select
+
+`openSettingsModal()` is updated to set `#theme-select`'s value to `currentTheme` before displaying the modal. A null-check guards against the HTML and JS being applied in separate steps:
+
+```js
+function openSettingsModal() {
+  var sel = document.getElementById('theme-select');
+  if (sel) sel.value = currentTheme;
+  document.getElementById('settings-modal-bg').classList.add('open');
+}
+```
 
 ### `index.html` — settings modal
 
-A new Theme section is added above the existing Export/Import section in `#settings-modal`:
+A new Theme section is added above the existing Export/Import section in `#settings-modal`. No new `.sm-label` class is needed — reuse the existing modal label style if one exists, or add minimal inline styling:
 
 ```html
 <div class="sm-theme-row">
-  <label class="sm-label" for="theme-select">Theme</label>
-  <select id="theme-select" class="sm-select" onchange="applyTheme(this.value);db_setting('theme',this.value)">
+  <label class="sm-theme-label" for="theme-select">Theme</label>
+  <select id="theme-select" class="sm-select"
+    onchange="applyTheme(this.value);db_setting('theme',this.value).catch(function(){})">
     <option>Mother Tree</option>
     <option>Void Court</option>
-    <!-- ... -->
+    <option>Ember Keep</option>
+    <option>Sunken Archive</option>
+    <option>Iron Reliquary</option>
+    <option>Crimson Pact</option>
+    <option>Verdant Spire</option>
+    <option>Starfall</option>
+    <option>Ashwood</option>
   </select>
 </div>
 ```
 
-`openSettingsModal()` is updated to sync the select value to the currently active theme before showing the modal.
+The `db_setting()` call uses `.catch(function(){})` to match the existing codebase convention for fire-and-forget IndexedDB writes (consistent with `restoreToolkitState()` and similar patterns).
 
 ### `styles.css` — minor additions
 
-Two new rules for the theme row inside the settings modal:
+Two new rules for the theme row inside the settings modal. No existing `.sm-select` rule exists — this is a new addition:
 
 ```css
 .sm-theme-row { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.sm-theme-label { font-size:12px; color:var(--text-dim); white-space:nowrap; }
 .sm-select { background:var(--surface2); border:1px solid var(--border); border-radius:6px;
              color:var(--text); padding:5px 10px; font-size:13px; cursor:pointer; }
 ```
@@ -118,10 +153,11 @@ Two new rules for the theme row inside the settings modal:
 
 ## Data Flow
 
-1. `init()` calls `restoreTheme()` → reads `db_setting('theme')` → calls `applyTheme(name)`
-2. User opens Settings → `openSettingsModal()` syncs `#theme-select` value to active theme
-3. User picks a theme → `applyTheme()` sets CSS vars on `documentElement` immediately → `db_setting('theme', name)` persists asynchronously
-4. No page reload needed — all CSS vars update live via inline styles on `:root`
+1. `restoreTheme()` called before `init()` IIFE — reads `db_setting('theme')` → calls `applyTheme(name)` → sets `currentTheme` and updates CSS vars on `documentElement`
+2. `init()` IIFE runs synchronously — `loadSession()`, render, etc. Theme is already applied
+3. User opens Settings → `openSettingsModal()` sets `#theme-select` value to `currentTheme`
+4. User picks a theme → `applyTheme()` updates `currentTheme` + CSS vars immediately → `db_setting('theme', name)` persists asynchronously
+5. No page reload needed — all CSS vars update live via inline styles on `:root`
 
 ---
 
@@ -129,9 +165,9 @@ Two new rules for the theme row inside the settings modal:
 
 | File | Change |
 |------|--------|
-| `app.js` | Add `§THEMES` const + `applyTheme()` + `restoreTheme()`; update `init()` |
-| `index.html` | Add theme `<select>` to settings modal; update `openSettingsModal()` call |
-| `styles.css` | Add `.sm-theme-row` and `.sm-select` rules |
+| `app.js` | Add `§THEMES` section (`currentTheme`, `THEMES`, `applyTheme`, `restoreTheme`); call `restoreTheme()` before `init()` IIFE; update `openSettingsModal()` |
+| `index.html` | Add theme `<select>` to settings modal |
+| `styles.css` | Add `.sm-theme-row`, `.sm-theme-label`, and `.sm-select` rules |
 | `README.md` | Document the theme system |
 | `dist/index.html` | Rebuilt via `node build.js` |
 
