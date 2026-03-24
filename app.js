@@ -888,7 +888,11 @@ function db_migrate(){
 // §EXPORT_IMPORT ═══════════════════════════════════════════════════════
 // EXPORT / IMPORT JSON BACKUP
 // ═══════════════════════════════════════════════════════════════════════
-function openSettingsModal(){document.getElementById('settings-modal-bg').classList.add('open');}
+function openSettingsModal(){
+  var sel=document.getElementById('theme-select');
+  if(sel)sel.value=currentTheme;
+  document.getElementById('settings-modal-bg').classList.add('open');
+}
 function closeSettingsModal(){
   document.getElementById('settings-modal-bg').classList.remove('open');
   document.getElementById('sm-status').textContent='';
@@ -3251,6 +3255,7 @@ function addOfficialEnv(){
 // §INIT
 // ── Init ──────────────────────────────────────────────────
 loadCustomAdv();
+restoreTheme().catch(function(){});
 (function init(){
   loadSession();
   // Create the first battle if no session existed (not if user intentionally closed all)
