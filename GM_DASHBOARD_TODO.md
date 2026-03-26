@@ -53,22 +53,23 @@ Audit all built-in content (adversaries, environments, rules text) against the D
 
 ---
 
-### 🔲 Plan E: Higher-Tier Adversaries + Filter Redesign
+### ✅ Plan E: Higher-Tier Adversaries + Filter Redesign
 
-Add Tier 2/3/4 adversaries from the SRD and replace the Arsenal's pill-button type filter with two side-by-side `<select>` dropdowns (Tier + Type). All 129 SRD adversaries will be available; filter state is persisted in session.
+Add Tier 2/3/4 adversaries from the SRD and replace the Arsenal's pill-button type filter with two side-by-side `<select>` dropdowns (Tier + Type). All 132 SRD adversaries available; filter state persisted in session.
 
 **Plan file:** `/home/jpuhalski/.claude/plans/structured-wiggling-starfish.md`
+**PR:** https://github.com/Ilberich/Daggerheart-GM-Dashboard/pull/15
 
-- [ ] Task 1: Add `tier: 1` to all existing ADV[] objects
-- [ ] Task 2: Add Tier 2 adversaries (37) from SRD
-- [ ] Task 3: Add Tier 3 adversaries (23) from SRD
-- [ ] Task 4: Add Tier 4 adversaries (18) from SRD
-- [ ] Task 5: Add `filterTier` state + `setTierFilter()` function
-- [ ] Task 6: Redesign `buildFilters()` — pill buttons → two `<select>` dropdowns
-- [ ] Task 7: Update `renderList()` to filter by tier + type
-- [ ] Task 8: CSS for `.filter-dropdowns` layout
-- [ ] Task 9: Persist `filterTier` in session
-- [ ] Task 10: Build + update README
+- [x] Task 1: Add `tier: 1` to all existing ADV[] objects
+- [x] Task 2: Add Tier 2 adversaries (37) from SRD
+- [x] Task 3: Add Tier 3 adversaries (23) from SRD
+- [x] Task 4: Add Tier 4 adversaries (18) from SRD
+- [x] Task 5: Add `filterTier` state + `setTierFilter()` function
+- [x] Task 6: Redesign `buildFilters()` — pill buttons → two `<select>` dropdowns
+- [x] Task 7: Update `renderList()` to filter by tier + type
+- [x] Task 8: CSS for `.filter-dropdowns` layout
+- [x] Task 9: Persist `filterTier` in session
+- [x] Task 10: Build + update README
 
 ---
 
