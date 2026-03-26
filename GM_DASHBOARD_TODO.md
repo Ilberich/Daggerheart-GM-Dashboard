@@ -6,7 +6,58 @@
 
 ---
 
+## Bug Fixes
+
+### ✅ B4. Theme Branch — "Add Lore" Button Does Nothing
+
+`#lore-add-menu` was `position:absolute; bottom:calc(100%+4px)`, opening above the button. `#tabbar` has `overflow-y:hidden`, clipping the menu entirely (it extended above the viewport). Fixed by switching to `position:fixed; top:var(--tabbar-h)` so the dropdown appears just below the tab bar.
+
+- [x] Reproduce on the theme branch
+- [x] Identify regression: `#tabbar` `overflow-y:hidden` clips the absolute-positioned menu
+- [x] Fix and verify lore tab creation works
+
+---
+
+### 🐛 B5. Theme Branch — Settings Tab Missing
+
+In the theme system PR branch, the settings gear/tab cannot be found. The settings modal (Export/Import) may have been removed or its trigger button dropped during the theme branch refactor.
+
+- [ ] Confirm settings button is absent from the tab bar or UI
+- [ ] Restore `#settings-btn` trigger and modal wiring
+- [ ] Verify Export/Import still functions
+
+---
+
 ## Required Tasks
+
+### 🔲 R1. Remove Non-SRD Content — High Priority
+
+Audit all built-in content (adversaries, environments, rules text) against the Daggerheart SRD and remove anything not covered by the license. Non-SRD material may violate the license terms.
+
+- [ ] Audit `ADV[]` in `app.js` — flag any adversaries not present in the SRD
+- [ ] Audit Rules Reference content in the Toolkit panel — remove or replace non-SRD rules text
+- [ ] Audit Environments in the Toolkit panel — remove any non-SRD entries
+- [ ] Rebuild + update README
+
+---
+
+### 🔲 Plan D: Editable SRD Rules
+
+Allow GMs to override any built-in SRD rule with homebrew text. Overrides stored in IndexedDB (`toolkit_notes`, `_override: true`). Restore Default reverts to SRD original. All destructive actions live inside the edit form, not on card faces.
+
+**Plan file:** `docs/superpowers/plans/2026-03-24-editable-srd-rules.md`
+**Spec:** `docs/superpowers/specs/2026-03-24-editable-srd-rules-design.md`
+
+- [ ] Task 1: CSS — override card & conditional form buttons
+- [ ] Task 2: Update `_appendRulesForm` — form structure
+- [ ] Task 3: Add `cancelRulesForm` and `restoreDefaultRule`
+- [ ] Task 4: Update `renderRulesList` — override map & universal edit button
+- [ ] Task 5: Update click handler
+- [ ] Task 6: Update `saveCustomRule` — override branch
+- [ ] Task 7: Build + README
+
+---
+
 
 ### 🔲 Plan C: Cloud Sync
 
@@ -31,6 +82,35 @@ GitHub-backed sync via Fine-Grained PAT + private repo. Opt-in, no server requir
 
 
 ## Suggested Additions
+
+### 🔲 S7. Add LICENSE File — High Priority
+
+Add an MIT License file to the repo root. Without a license, no one has legal permission to use, modify, or distribute the code even if it's publicly visible on GitHub. This should be done before sharing the repo link publicly.
+
+- [ ] Create `LICENSE` file in repo root (MIT License, copyright year + author name)
+
+---
+
+### 🔲 S8. Home Screen for Managing Multiple Sessions — Medium Priority
+
+A landing/home screen that lets the GM see, name, and switch between multiple saved sessions rather than always loading the single most-recent session.
+
+- [ ] Design home screen UI (session list, create new, delete, rename)
+- [ ] Migrate session storage to support multiple named sessions keyed by ID
+- [ ] Add routing or modal to switch active session
+
+---
+
+### 🔲 S9. Adversary Sidebar Reopen Arrow
+
+Once the adversary purchase sidebar is minimized, there is no way to reopen it except clicking "Begin Battle." This is unintuitive — add a persistent left-edge arrow toggle (matching the Toolkit panel's arrow) so the sidebar can be opened at any time.
+
+- [ ] Add a left-edge toggle arrow to `#sidebar` that mirrors the Toolkit panel's toggle behavior
+- [ ] Arrow should be visible whenever the sidebar is collapsed, regardless of battle state
+- [ ] Wire to `toggleSidebar()` / `openSidebar()`
+
+---
+
 
 ### 🔲 S6. Remove App Title "The Mother Tree"
 

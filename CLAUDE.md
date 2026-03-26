@@ -5,6 +5,14 @@
 
 ---
 
+## Workflow Rules
+
+- **Every PR must include an updated `README.md`** reflecting any new features, changed behaviour, or setup steps introduced by that PR.
+- **`GM_DASHBOARD_TODO.md` is the single source of truth for pending work.** When a brainstorm session produces an implementation plan, immediately add a `### 🔲 Plan X` section to `GM_DASHBOARD_TODO.md` with the plan's tasks as checkboxes and a link to the plan file. Mark tasks `[x]` as they complete; move the whole plan to the `## Completed` section when all tasks are done.
+- **Quick ideas go in `Daggerheart Apps/INBOX.md`** (one level up from this project) — not in this TODO. Tag ideas `[GM]`, `[CS]`, or `[both]`. During review sessions, flesh them out, move them into this TODO, then delete from the inbox.
+
+---
+
 ## File Layout
 
 | File | Purpose |
