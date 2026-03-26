@@ -84,8 +84,14 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 #new-battle-btn:hover{color:var(--gold);background:rgba(212,168,67,.08);}
 #lore-add-btn:hover{color:var(--gold);background:rgba(212,168,67,.06);}
 #lore-add-wrap{position:relative;display:flex;align-items:stretch;}
+#settings-btn{
+  padding:0 12px;height:100%;background:transparent;border:none;
+  border-left:1px solid var(--border);color:var(--text-muted);font-size:16px;
+  cursor:pointer;transition:color .15s;flex-shrink:0;
+}
+#settings-btn:hover{color:var(--gold);}
 #lore-add-menu{
-  position:fixed;top:var(--tabbar-h);right:0;
+  position:fixed;top:var(--tabbar-h);
   background:var(--surface2);border:1px solid var(--border);
   border-radius:0 0 6px 6px;min-width:170px;z-index:300;
   box-shadow:0 4px 14px rgba(0,0,0,.45);overflow:hidden;
@@ -396,9 +402,12 @@ a.encounter-link:hover{color:var(--text);border-color:var(--text-muted);}
 .adv-search-input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(212,168,67,.10);}
 .adv-search-input::placeholder{color:var(--text-muted);font-style:italic;}
 
-.filter-row{padding:4px 12px;display:flex;flex-wrap:wrap;gap:4px;flex-shrink:0;}
-.filter-btn{font-size:10px;padding:3px 9px;border-radius:99px;background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;font-family:'Cinzel',serif;letter-spacing:.06em;transition:all .15s;}
-.filter-btn:hover,.filter-btn.active{background:var(--gold);border-color:var(--gold);color:var(--bg);}
+.filter-row{padding:0;flex-shrink:0;}
+.filter-dropdowns{display:flex;gap:8px;padding:6px 10px;}
+.filter-col{flex:1;display:flex;flex-direction:column;gap:3px;}
+.filter-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);}
+.filter-select{width:100%;padding:5px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:12px;cursor:pointer;}
+.filter-select:focus{outline:none;border-color:var(--gold);}
 
 .adv-list{overflow-y:auto;flex:1;padding:4px 8px 16px;}
 .adv-list::-webkit-scrollbar{width:4px;}
@@ -1110,7 +1119,7 @@ body.toolkit-open #toolkit-toggle{right:var(--toolkit-w);}
 
   /* Larger tap targets for dots */
   .dot{width:32px;height:32px;}
-  .dot,.tab-close,.card-dismiss,.filter-btn,.topbar-btn,.status-badge,.status-add-btn,.status-option,.card-abilities-toggle,#sidebar-toggle{touch-action:manipulation;}
+  .dot,.tab-close,.card-dismiss,.filter-select,.topbar-btn,.status-badge,.status-add-btn,.status-option,.card-abilities-toggle,#sidebar-toggle{touch-action:manipulation;}
 
   /* Toolkit panel: full-width overlay drawer on mobile */
   body.toolkit-open .tab-panel{right:0;}

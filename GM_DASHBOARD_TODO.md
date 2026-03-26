@@ -6,29 +6,41 @@
 
 ---
 
-## Bug Fixes
-
-### ✅ B4. Theme Branch — "Add Lore" Button Does Nothing
-
-`#lore-add-menu` was `position:absolute; bottom:calc(100%+4px)`, opening above the button. `#tabbar` has `overflow-y:hidden`, clipping the menu entirely (it extended above the viewport). Fixed by switching to `position:fixed; top:var(--tabbar-h)` so the dropdown appears just below the tab bar.
-
-- [x] Reproduce on the theme branch
-- [x] Identify regression: `#tabbar` `overflow-y:hidden` clips the absolute-positioned menu
-- [x] Fix and verify lore tab creation works
+## Inbox
 
 ---
 
-### 🐛 B5. Theme Branch — Settings Tab Missing
+## Quick Wins
 
-In the theme system PR branch, the settings gear/tab cannot be found. The settings modal (Export/Import) may have been removed or its trigger button dropped during the theme branch refactor.
+*Small, independent changes — each fits in one short session with no cross-task dependencies.*
 
-- [ ] Confirm settings button is absent from the tab bar or UI
-- [ ] Restore `#settings-btn` trigger and modal wiring
-- [ ] Verify Export/Import still functions
+### 🔲 S7. Add LICENSE File — High Priority
+
+Add an MIT License file to the repo root. Without a license, no one has legal permission to use, modify, or distribute the code even if it's publicly visible on GitHub. This should be done before sharing the repo link publicly.
+
+- [ ] Create `LICENSE` file in repo root (MIT License, copyright year + author name)
 
 ---
 
-## Required Tasks
+### 🔲 S6. Remove App Title "The Mother Tree"
+
+The app should not be titled "The Mother Tree" — that name is reserved for the default theme only. Remove or replace all instances of the name used as an app/UI title (page title, GM badge, localStorage keys, manifest, etc.). The theme name `Mother Tree` may remain.
+
+---
+
+### 🔲 S9. Adversary Sidebar Reopen Arrow
+
+Once the adversary purchase sidebar is minimized, there is no way to reopen it except clicking "Begin Battle." This is unintuitive — add a persistent left-edge arrow toggle (matching the Toolkit panel's arrow) so the sidebar can be opened at any time.
+
+- [ ] Add a left-edge toggle arrow to `#sidebar` that mirrors the Toolkit panel's toggle behavior
+- [ ] Arrow should be visible whenever the sidebar is collapsed, regardless of battle state
+- [ ] Wire to `toggleSidebar()` / `openSidebar()`
+
+---
+
+## SRD Compliance Pass
+
+*Do R1 and Plan E together — both touch `ADV[]` and the built-in content lists, so a single editing pass + one build + one README update covers both.*
 
 ### 🔲 R1. Remove Non-SRD Content — High Priority
 
@@ -40,6 +52,27 @@ Audit all built-in content (adversaries, environments, rules text) against the D
 - [ ] Rebuild + update README
 
 ---
+
+### 🔲 Plan E: Higher-Tier Adversaries + Filter Redesign
+
+Add Tier 2/3/4 adversaries from the SRD and replace the Arsenal's pill-button type filter with two side-by-side `<select>` dropdowns (Tier + Type). All 129 SRD adversaries will be available; filter state is persisted in session.
+
+**Plan file:** `/home/jpuhalski/.claude/plans/structured-wiggling-starfish.md`
+
+- [ ] Task 1: Add `tier: 1` to all existing ADV[] objects
+- [ ] Task 2: Add Tier 2 adversaries (37) from SRD
+- [ ] Task 3: Add Tier 3 adversaries (23) from SRD
+- [ ] Task 4: Add Tier 4 adversaries (18) from SRD
+- [ ] Task 5: Add `filterTier` state + `setTierFilter()` function
+- [ ] Task 6: Redesign `buildFilters()` — pill buttons → two `<select>` dropdowns
+- [ ] Task 7: Update `renderList()` to filter by tier + type
+- [ ] Task 8: CSS for `.filter-dropdowns` layout
+- [ ] Task 9: Persist `filterTier` in session
+- [ ] Task 10: Build + update README
+
+---
+
+## Toolkit Enhancement
 
 ### 🔲 Plan D: Editable SRD Rules
 
@@ -58,38 +91,20 @@ Allow GMs to override any built-in SRD rule with homebrew text. Overrides stored
 
 ---
 
+## Deferred / Maybe Never
 
-### 🔲 Plan C: Cloud Sync
+### ⬇ Plan C: Cloud Sync
 
-GitHub-backed sync via Fine-Grained PAT + private repo. Opt-in, no server required. Per-store incremental push/pull with auto-sync timer.
+GitHub-backed sync via Fine-Grained PAT + private repo. Deferred — Export/Import JSON already covers the multi-device transfer use case manually, and the GitHub PAT setup adds friction for most GMs. High token cost for marginal gain over what's already there.
 
 **Plan file:** `docs/superpowers/plans/2026-03-22-gm-dashboard-cloud-sync.md`
 **Spec:** `docs/superpowers/specs/2026-03-22-gm-dashboard-cloud-sync-design.md`
-**Approach:** `superpowers:subagent-driven-development` — fresh subagent per task with code review between tasks.
-
-> ⏸ **Do not begin execution until 2026-03-26 (Thursday).** Token budget resets then.
-
-- [ ] Task 1: Dirty Tracking in `db_put` — `SYNC_STORES`, `_syncImporting` guard
-- [ ] Task 2: Tab Bar Sync Button + CSS
-- [ ] Task 3: Settings Modal — Cloud Sync Section
-- [ ] Task 4: Core GitHub API Helpers (`§CLOUD_SYNC`)
-- [ ] Task 5: Push and Pull Store Functions
-- [ ] Task 6: `runSync()`
-- [ ] Task 7: Connect / Disconnect + Settings Modal UI
-- [ ] Task 8: Build Verification + `README.md` update
 
 ---
 
+## Future Features
 
-## Suggested Additions
-
-### 🔲 S7. Add LICENSE File — High Priority
-
-Add an MIT License file to the repo root. Without a license, no one has legal permission to use, modify, or distribute the code even if it's publicly visible on GitHub. This should be done before sharing the repo link publicly.
-
-- [ ] Create `LICENSE` file in repo root (MIT License, copyright year + author name)
-
----
+*Larger scope — each warrants its own brainstorm/plan session before starting.*
 
 ### 🔲 S8. Home Screen for Managing Multiple Sessions — Medium Priority
 
@@ -100,47 +115,6 @@ A landing/home screen that lets the GM see, name, and switch between multiple sa
 - [ ] Add routing or modal to switch active session
 
 ---
-
-### 🔲 S9. Adversary Sidebar Reopen Arrow
-
-Once the adversary purchase sidebar is minimized, there is no way to reopen it except clicking "Begin Battle." This is unintuitive — add a persistent left-edge arrow toggle (matching the Toolkit panel's arrow) so the sidebar can be opened at any time.
-
-- [ ] Add a left-edge toggle arrow to `#sidebar` that mirrors the Toolkit panel's toggle behavior
-- [ ] Arrow should be visible whenever the sidebar is collapsed, regardless of battle state
-- [ ] Wire to `toggleSidebar()` / `openSidebar()`
-
----
-
-
-### 🔲 S6. Remove App Title "The Mother Tree"
-
-The app should not be titled "The Mother Tree" — that name is reserved for the default theme only. Remove or replace all instances of the name used as an app/UI title (page title, GM badge, localStorage keys, manifest, etc.). The theme name `Mother Tree` may remain.
-
----
-
-### ✅ S5. Lore Tab Markdown Editor
-
-Each lore tab should be editable in-browser — no need to edit the `.md` file externally and re-upload.
-
-**UI:**
-- A small `✏ Edit` button in the top-right corner of each lore tab panel (absolutely positioned over the content area)
-- Clicking it toggles the tab between **read mode** (current rendered view) and **edit mode** (raw markdown textarea)
-- In edit mode the button label changes to `👁 Preview`; clicking it re-renders the markdown and saves
-- `Escape` in the textarea cancels edits and returns to the last-saved content
-- The `📜 +` lore tab button in the tab bar should also offer a "New blank tab" path — create an empty tab that opens directly in edit mode
-
-**Data flow:**
-- Raw markdown already lives in `tabRawMd[id]` — the textarea reads and writes this directly
-- On exit from edit mode: update `tabRawMd[id]`, call `renderMd(raw, title)`, replace `.md-content` innerHTML, call `saveSession()`
-- Session persistence already saves/restores `tabRawMd` — no schema changes needed
-
-**Where to change:**
-- `app.js`: `addTab()` — inject edit button into panel HTML; add `toggleLoreEdit(id)`, `commitLoreEdit(id)` functions; add a `newBlankTab()` function
-- `styles.css`: `.md-edit-btn` (positioned button), `.md-edit-area` (full-panel textarea, monospace, dark theme)
-- `index.html`: wire the `📜 +` button to offer blank tab option (or add a separate `📝 +` button)
-
----
-
 ---
 ---
 
@@ -284,6 +258,29 @@ Single clean workflow: write a `.md` file → upload → adversary appears in Ar
 
 ## ✅ Suggested Additions
 
+### ✅ S5. Lore Tab Markdown Editor
+
+Each lore tab should be editable in-browser — no need to edit the `.md` file externally and re-upload.
+
+**UI:**
+- A small `✏ Edit` button in the top-right corner of each lore tab panel (absolutely positioned over the content area)
+- Clicking it toggles the tab between **read mode** (current rendered view) and **edit mode** (raw markdown textarea)
+- In edit mode the button label changes to `👁 Preview`; clicking it re-renders the markdown and saves
+- `Escape` in the textarea cancels edits and returns to the last-saved content
+- The `📜 +` lore tab button in the tab bar should also offer a "New blank tab" path — create an empty tab that opens directly in edit mode
+
+**Data flow:**
+- Raw markdown already lives in `tabRawMd[id]` — the textarea reads and writes this directly
+- On exit from edit mode: update `tabRawMd[id]`, call `renderMd(raw, title)`, replace `.md-content` innerHTML, call `saveSession()`
+- Session persistence already saves/restores `tabRawMd` — no schema changes needed
+
+**Where to change:**
+- `app.js`: `addTab()` — inject edit button into panel HTML; add `toggleLoreEdit(id)`, `commitLoreEdit(id)` functions; add a `newBlankTab()` function
+- `styles.css`: `.md-edit-btn` (positioned button), `.md-edit-area` (full-panel textarea, monospace, dark theme)
+- `index.html`: wire the `📜 +` button to offer blank tab option (or add a separate `📝 +` button)
+
+---
+
 ### ✅ S4. Adversary Search in Arsenal
 - [x] Text search box at the top of the Arsenal sidebar
 - [x] Filters adversary list by name as you type
@@ -298,6 +295,26 @@ Single clean workflow: write a `.md` file → upload → adversary appears in Ar
 ---
 
 ## ✅ Bug Fixes
+
+### ✅ B4. Theme Branch — "Add Lore" Button Does Nothing
+
+`#lore-add-menu` was `position:absolute; bottom:calc(100%+4px)`, opening above the button. `#tabbar` has `overflow-y:hidden`, clipping the menu entirely (it extended above the viewport). Fixed by switching to `position:fixed; top:var(--tabbar-h)` so the dropdown appears just below the tab bar.
+
+- [x] Reproduce on the theme branch
+- [x] Identify regression: `#tabbar` `overflow-y:hidden` clips the absolute-positioned menu
+- [x] Fix and verify lore tab creation works
+
+---
+
+### ✅ B5. Theme Branch — Settings Tab Missing
+
+In the theme system PR branch, the settings gear/tab cannot be found. The settings modal (Export/Import) may have been removed or its trigger button dropped during the theme branch refactor.
+
+- [x] Confirm settings button is absent from the tab bar or UI
+- [x] Restore `#settings-btn` trigger and modal wiring
+- [x] Verify Export/Import still functions
+
+---
 
 ### ✅ B3. Right Sidebar Toggle Arrow Too Small
 - [x] Increased `#sidebar-toggle` from 30×30 px to 38×38 px
