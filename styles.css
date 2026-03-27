@@ -876,6 +876,28 @@ body.toolkit-open #toolkit-toggle{right:var(--toolkit-w);}
 .rule-card-body{display:none;padding:8px 10px;font-size:13px;color:var(--text-muted);line-height:1.6;border-top:1px solid var(--border);}
 .rule-card-body.open{display:block;}
 .rule-card.custom{border-color:var(--gold-dim);}
+.rule-card.override{border-left:3px solid var(--gold-dim);}
+
+/* Edit form — hide cat row when editing an SRD rule */
+#rif-cat-row{display:block;}
+#rules-add-form.is-srd #rif-cat-row{display:none;}
+
+/* Edit form — restore and delete buttons hidden by default */
+#rules-add-form .rule-restore-btn{display:none;}
+#rules-add-form.is-override .rule-restore-btn{display:inline-block;}
+#rules-add-form .rule-del-form-btn{display:none;}
+#rules-add-form.is-custom .rule-del-form-btn{display:inline-block;}
+
+.rule-restore-btn{
+  flex:1;padding:5px;border-radius:5px;font-size:12px;font-weight:700;
+  background:transparent;border:1px solid var(--border2);color:var(--text-muted);cursor:pointer;
+}
+.rule-restore-btn:hover{border-color:var(--gold-dim);color:var(--gold);}
+.rule-del-form-btn{
+  flex:1;padding:5px;border-radius:5px;font-size:12px;font-weight:700;
+  background:transparent;border:1px solid var(--border2);color:var(--text-muted);cursor:pointer;
+}
+.rule-del-form-btn:hover{border-color:var(--fear);color:var(--fear);}
 
 .rules-add-btn{
   display:block;width:100%;margin:6px 0 0;padding:7px;

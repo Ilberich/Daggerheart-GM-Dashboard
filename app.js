@@ -1668,22 +1668,59 @@ document.addEventListener('click',function(e){
   if(removeBtn){document.getElementById(removeBtn.dataset.rowid)?.remove();return;}
   var editRuleBtn=e.target.closest('[data-ruleedit]');
   if(editRuleBtn){
-    db_get('toolkit_notes',editRuleBtn.dataset.ruleedit).then(function(rec){
-      if(!rec)return;
-      _ruleEditId=rec.id;
-      var form=document.getElementById('rules-add-form');
-      if(!form)return;
-      document.getElementById('rif-name').value=rec.name||'';
-      document.getElementById('rif-cat').value=rec.cat||'';
-      document.getElementById('rif-summary').value=rec.summary||'';
-      document.getElementById('rif-body').value=rec.body||'';
-      form.classList.add('open');
+    var ruleId=editRuleBtn.dataset.ruleedit;
+    db_get('toolkit_notes',ruleId).then(function(rec){
+      var form=document.getElementById('rules-add-form');if(!form)return;
+      cancelRulesForm(); // clear previous state before opening
+      _ruleEditId=ruleId;
+      if(rec&&rec._override){
+        // Modified SRD rule — populate from override record
+        _ruleEditIsOverride=true;
+        document.getElementById('rif-name').value=rec.name||'';
+        document.getElementById('rif-summary').value=rec.summary||'';
+        document.getElementById('rif-body').value=rec.body||'';
+        form.classList.add('is-srd','is-override','open');
+        var restoreBtn=form.querySelector('[data-rulerestore]');
+        if(restoreBtn)restoreBtn.dataset.rulerestore=ruleId;
+      } else if(!rec){
+        // Unmodified SRD rule — look up from RULES[]
+        var srdRule=RULES.find(function(r){return r.id===ruleId;});
+        if(!srdRule)return;
+        _ruleEditIsOverride=true;
+        document.getElementById('rif-name').value=srdRule.name||'';
+        document.getElementById('rif-summary').value=srdRule.summary||'';
+        document.getElementById('rif-body').value=srdRule.body||'';
+        form.classList.add('is-srd','open');
+      } else {
+        // Custom rule
+        _ruleEditIsOverride=false;
+        document.getElementById('rif-name').value=rec.name||'';
+        document.getElementById('rif-cat').value=rec.cat||'';
+        document.getElementById('rif-summary').value=rec.summary||'';
+        document.getElementById('rif-body').value=rec.body||'';
+        var delBtn=form.querySelector('[data-ruledelfm]');
+        if(delBtn)delBtn.dataset.ruledelfm=ruleId;
+        form.classList.add('is-custom','open');
+      }
       form.scrollIntoView({behavior:'smooth'});
     });
     return;
   }
-  var delRuleBtn=e.target.closest('[data-ruledel]');
-  if(delRuleBtn){deleteCustomRule(delRuleBtn.dataset.ruledel);return;}
+  var restoreRuleBtn=e.target.closest('[data-rulerestore]');
+  if(restoreRuleBtn&&restoreRuleBtn.dataset.rulerestore){
+    restoreDefaultRule(restoreRuleBtn.dataset.rulerestore);return;
+  }
+  var delFormBtn=e.target.closest('[data-ruledelfm]');
+  if(delFormBtn&&delFormBtn.dataset.ruledelfm){
+    var delId=delFormBtn.dataset.ruledelfm;
+    if(!confirm('Delete this custom rule?'))return;
+    db_delete('toolkit_notes',delId).then(function(){
+      showToast('Rule deleted.');
+      cancelRulesForm();
+      renderRulesList();
+    });
+    return;
+  }
   var nedit=e.target.closest('[data-ncedit]');
   if(nedit){
     db_get('toolkit_notes',nedit.dataset.ncedit).then(function(rec){
@@ -2039,6 +2076,7 @@ var RULES=[
 var _rulesRendered=false;
 var _rulesFilter={search:'',cat:'All'};
 var _ruleEditId=null;
+var _ruleEditIsOverride=false;
 
 function renderRulesTab(){
   _rulesRendered=true;
@@ -2071,8 +2109,17 @@ function filterRules(val){_rulesFilter.search=val.toLowerCase();renderRulesList(
 function renderRulesList(){
   var el=document.getElementById('rules-list');if(!el)return;
   db_getAll('toolkit_notes').then(function(notes){
-    var customRules=(notes||[]).filter(function(n){return n._rule;});
-    var all=RULES.concat(customRules);
+    var overrideMap={};
+    var customRules=[];
+    (notes||[]).forEach(function(n){
+      if(n._override)overrideMap[n.id]=n;
+      else if(n._rule)customRules.push(n);
+    });
+    var srdRules=RULES.map(function(r){
+      var ov=overrideMap[r.id];
+      return ov?{id:r.id,cat:r.cat,name:ov.name,summary:ov.summary,body:ov.body,_overridden:true}:r;
+    });
+    var all=srdRules.concat(customRules);
     var filtered=all.filter(function(r){
       var catMatch=_rulesFilter.cat==='All'||r.cat===_rulesFilter.cat;
       var q=_rulesFilter.search;
@@ -2081,11 +2128,11 @@ function renderRulesList(){
     });
     if(!filtered.length){el.innerHTML='<div style="padding:12px;font-size:13px;color:var(--text-muted)">No rules match.</div>';_appendRulesForm(el);return;}
     el.innerHTML=filtered.map(function(r){
-      var customControls=r._rule?'<button class="rule-edit-btn" data-ruleedit="'+escH(r.id)+'">&#x270E;</button><button class="rule-del-btn" data-ruledel="'+escH(r.id)+'">&times;</button>':'';
-      return '<div class="rule-card'+(r._rule?' custom':'')+'"><div class="rule-card-header" onclick="toggleRuleCard(\''+escH(r.id)+'\')">'
+      var cardClass='rule-card'+(r._rule?' custom':'')+(r._overridden?' override':'');
+      return '<div class="'+cardClass+'"><div class="rule-card-header" onclick="toggleRuleCard(\''+escH(r.id)+'\')">'
         +'<span class="rule-card-name">'+escH(r.name)+'</span>'
         +'<span class="rule-card-summary">'+escH(r.summary)+'</span>'
-        +customControls
+        +'<button class="rule-edit-btn" data-ruleedit="'+escH(r.id)+'">&#x270E;</button>'
         +'<span class="rule-card-chevron" id="rchev-'+escH(r.id)+'">&#x25BC;</span>'
         +'</div>'
         +'<div class="rule-card-body" id="rbody-'+escH(r.id)+'">'+escH(r.body)+'</div>'
@@ -2100,10 +2147,16 @@ function renderRulesList(){
 function _appendRulesForm(el){
   el.innerHTML+='<button class="rules-add-btn" onclick="toggleRulesForm()">&#xFF0B; Add Custom Rule</button>'
     +'<div class="rules-inline-form" id="rules-add-form">'
-    +'<input class="rif-input" id="rif-name" placeholder="Rule name"><input class="rif-input" id="rif-cat" placeholder="Category (e.g. Combat)">'
+    +'<input class="rif-input" id="rif-name" placeholder="Rule name">'
+    +'<div id="rif-cat-row"><input class="rif-input" id="rif-cat" placeholder="Category (e.g. Combat)"></div>'
     +'<input class="rif-input" id="rif-summary" placeholder="One-line summary">'
     +'<textarea class="rif-textarea" id="rif-body" placeholder="Full rule text\u2026"></textarea>'
-    +'<div class="rif-actions"><button class="rif-save" onclick="saveCustomRule()">Save</button><button class="rif-cancel" onclick="toggleRulesForm()">Cancel</button></div>'
+    +'<div class="rif-actions">'
+    +'<button class="rif-save" onclick="saveCustomRule()">Save</button>'
+    +'<button class="rule-restore-btn" data-rulerestore="">&#x21BA; Restore Default</button>'
+    +'<button class="rule-del-form-btn" data-ruledelfm="">&#xD7; Delete</button>'
+    +'<button class="rif-cancel" onclick="cancelRulesForm()">Cancel</button>'
+    +'</div>'
     +'</div>';
 }
 
@@ -2118,30 +2171,52 @@ function toggleRulesForm(){
   document.getElementById('rules-add-form').classList.toggle('open');
 }
 
-function saveCustomRule(){
-  var name=document.getElementById('rif-name').value.trim();
-  var cat=document.getElementById('rif-cat').value.trim()||'Custom';
-  var summary=document.getElementById('rif-summary').value.trim();
-  var body=document.getElementById('rif-body').value.trim();
-  if(!name||!body){showToast('Name and rule text are required.');return;}
-  var rec={
-    id:_ruleEditId||('rule_'+Date.now()),
-    _rule:true,
-    cat:cat,name:name,summary:summary,body:body
-  };
-  if(!_ruleEditId){rec.createdAt=new Date().toISOString();}
-  db_put('toolkit_notes',rec).then(function(){
-    showToast(_ruleEditId?'Rule updated.':'Rule saved.');
-    _ruleEditId=null;
-    ['rif-name','rif-cat','rif-summary','rif-body'].forEach(function(id){document.getElementById(id).value='';});
-    document.getElementById('rules-add-form').classList.remove('open');
+function cancelRulesForm(){
+  _ruleEditId=null;
+  _ruleEditIsOverride=false;
+  var form=document.getElementById('rules-add-form');
+  if(!form)return;
+  form.classList.remove('is-srd','is-override','is-custom','open');
+  ['rif-name','rif-cat','rif-summary','rif-body'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+}
+
+function restoreDefaultRule(id){
+  if(!confirm('Restore this rule to its SRD default? Your changes will be lost.'))return;
+  db_delete('toolkit_notes',id).then(function(){
+    showToast('Rule restored to default.');
+    cancelRulesForm();
     renderRulesList();
   });
 }
 
-function deleteCustomRule(id){
-  if(!confirm('Delete this rule?'))return;
-  db_delete('toolkit_notes',id).then(function(){showToast('Rule deleted.');renderRulesList();});
+function saveCustomRule(){
+  var name=document.getElementById('rif-name').value.trim();
+  var summary=document.getElementById('rif-summary').value.trim();
+  var body=document.getElementById('rif-body').value.trim();
+  if(!name||!body){showToast('Name and rule text are required.');return;}
+  var rec;
+  if(_ruleEditIsOverride){
+    // Saving an SRD rule override — cat comes from RULES[], never from the form
+    var origRule=RULES.find(function(r){return r.id===_ruleEditId;});
+    if(!origRule)return; // safety: should never happen — edit only reachable for RULES[] cards
+    rec={id:_ruleEditId,_override:true,cat:origRule.cat,name:name,summary:summary,body:body};
+  } else {
+    // Saving a custom rule
+    var cat=document.getElementById('rif-cat').value.trim()||'Custom';
+    rec={
+      id:_ruleEditId||('rule_'+Date.now()),
+      _rule:true,
+      cat:cat,name:name,summary:summary,body:body
+    };
+    if(!_ruleEditId){rec.createdAt=new Date().toISOString();}
+  }
+  db_put('toolkit_notes',rec).then(function(){
+    showToast(_ruleEditId?'Rule updated.':'Rule saved.');
+    cancelRulesForm();
+    renderRulesList();
+  });
 }
 
 
