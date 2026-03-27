@@ -1,1 +1,8 @@
+# Git worktrees (local dev tooling)
 .worktrees/
+
+# Claude Code working directory (local tooling)
+.claude/
+
+# AI-assisted development working docs (internal only)
+docs/superpowers/
