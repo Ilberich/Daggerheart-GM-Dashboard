@@ -19,7 +19,7 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - Drag-and-drop `.md` files to open them as wiki-style reference tabs
 - `[[encounter:Name]]` links — clickable gold links that load a saved encounter directly into combat
 - **In-browser editing** — click `✏ Edit` (top-right of any lore tab) to edit the raw markdown; click `👁 Preview` to re-render and save; press `Escape` to cancel without saving
-- **Add lore tab** — click the `📜 +` button in the tab bar for a dropdown: **New Blank Tab** or **Upload .md File**
+- **Add lore tab** — click the book-icon `+` button in the tab bar for a dropdown: **New Blank Tab** or **Upload .md File**
 
 ### Saved Encounters
 - Save any staged encounter queue with a name
@@ -47,7 +47,7 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - **Export / Import JSON** — back up your full session (combat, notes, encounters, library) to a file; restore on any device
 
 ### Themes
-- **9 dark themes** — all designed for GM-screen use; switch instantly via the ⚙ Settings modal
+- **9 dark themes** — all designed for GM-screen use; switch instantly via the gear-icon Settings modal
 - **Persists across sessions** — your chosen theme is restored on every load
 - Themes: Mother Tree *(default)*, Void Court, Ember Keep, Sunken Archive, Iron Reliquary, Crimson Pact, Verdant Spire, Starfall, Ashwood
 

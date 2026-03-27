@@ -542,7 +542,7 @@ a.encounter-link:hover{color:var(--text);border-color:var(--text-muted);}
 ═══════════════════════════════════════════════ */
 #custom-modal-bg{
   display:none;position:fixed;inset:0;z-index:500;
-  background:rgba(5,6,10,.88);backdrop-filter:blur(4px);
+  background:rgba(5,6,4,.75);backdrop-filter:blur(3px);
   align-items:center;justify-content:center;
 }
 #custom-modal-bg.open{display:flex;}
@@ -675,7 +675,7 @@ a.encounter-link:hover{color:var(--text);border-color:var(--text-muted);}
 /* §SETTINGS_MODAL */
 #settings-modal-bg{
   display:none;position:fixed;inset:0;z-index:500;
-  background:rgba(0,0,0,.6);align-items:center;justify-content:center;
+  background:rgba(5,6,4,.75);backdrop-filter:blur(3px);align-items:center;justify-content:center;
 }
 #settings-modal-bg.open{display:flex;}
 #settings-modal{
@@ -707,8 +707,8 @@ a.encounter-link:hover{color:var(--text);border-color:var(--text-muted);}
 .sm-select option{background:var(--surface2);}
 
 /* §SAVED_ENCOUNTERS */
-#btn-save-enc{background:transparent;border-color:var(--green-dim);color:var(--green);}
-#btn-save-enc:hover{background:rgba(90,158,114,.12);border-color:var(--green);}
+#btn-save-enc{background:transparent;border-color:var(--gold-dim);color:var(--gold-dim);}
+#btn-save-enc:hover{background:rgba(212,168,67,.08);border-color:var(--gold);color:var(--gold);}
 
 #save-enc-prompt{padding:8px 16px;background:var(--surface2);border-top:1px solid var(--border);}
 .sep-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -763,7 +763,7 @@ a.encounter-link:hover{color:var(--text);border-color:var(--text-muted);}
 
 /* §ENC_LOAD_MODAL */
 .enc-load-modal-bg{
-  position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.6);
+  position:fixed;inset:0;z-index:600;background:rgba(5,6,4,.75);backdrop-filter:blur(3px);
   display:flex;align-items:center;justify-content:center;
 }
 .enc-load-modal{
