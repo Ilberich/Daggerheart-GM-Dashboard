@@ -2193,28 +2193,30 @@ function restoreDefaultRule(id){
 
 function saveCustomRule(){
   var name=document.getElementById('rif-name').value.trim();
-  var cat=document.getElementById('rif-cat').value.trim()||'Custom';
   var summary=document.getElementById('rif-summary').value.trim();
   var body=document.getElementById('rif-body').value.trim();
   if(!name||!body){showToast('Name and rule text are required.');return;}
-  var rec={
-    id:_ruleEditId||('rule_'+Date.now()),
-    _rule:true,
-    cat:cat,name:name,summary:summary,body:body
-  };
-  if(!_ruleEditId){rec.createdAt=new Date().toISOString();}
+  var rec;
+  if(_ruleEditIsOverride){
+    // Saving an SRD rule override — cat comes from RULES[], never from the form
+    var origRule=RULES.find(function(r){return r.id===_ruleEditId;});
+    if(!origRule)return; // safety: should never happen — edit only reachable for RULES[] cards
+    rec={id:_ruleEditId,_override:true,cat:origRule.cat,name:name,summary:summary,body:body};
+  } else {
+    // Saving a custom rule
+    var cat=document.getElementById('rif-cat').value.trim()||'Custom';
+    rec={
+      id:_ruleEditId||('rule_'+Date.now()),
+      _rule:true,
+      cat:cat,name:name,summary:summary,body:body
+    };
+    if(!_ruleEditId){rec.createdAt=new Date().toISOString();}
+  }
   db_put('toolkit_notes',rec).then(function(){
     showToast(_ruleEditId?'Rule updated.':'Rule saved.');
-    _ruleEditId=null;
-    ['rif-name','rif-cat','rif-summary','rif-body'].forEach(function(id){document.getElementById(id).value='';});
-    document.getElementById('rules-add-form').classList.remove('open');
+    cancelRulesForm();
     renderRulesList();
   });
-}
-
-function deleteCustomRule(id){
-  if(!confirm('Delete this rule?'))return;
-  db_delete('toolkit_notes',id).then(function(){showToast('Rule deleted.');renderRulesList();});
 }
 
 
