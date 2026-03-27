@@ -172,7 +172,7 @@ function toggleLoreEdit(id){
         }
       }else if(orderedMatch){
         e.preventDefault();
-        var nextNum=parseInt(orderedMatch[2])+1;
+        var nextNum=parseInt(orderedMatch[2],10)+1;
         if(orderedMatch[3]===''){
           // Empty ordered item — exit list
           var obefore=val.slice(0,lineStart);
