@@ -2072,8 +2072,17 @@ function filterRules(val){_rulesFilter.search=val.toLowerCase();renderRulesList(
 function renderRulesList(){
   var el=document.getElementById('rules-list');if(!el)return;
   db_getAll('toolkit_notes').then(function(notes){
-    var customRules=(notes||[]).filter(function(n){return n._rule;});
-    var all=RULES.concat(customRules);
+    var overrideMap={};
+    var customRules=[];
+    (notes||[]).forEach(function(n){
+      if(n._override)overrideMap[n.id]=n;
+      else if(n._rule)customRules.push(n);
+    });
+    var srdRules=RULES.map(function(r){
+      var ov=overrideMap[r.id];
+      return ov?{id:r.id,cat:r.cat,name:ov.name,summary:ov.summary,body:ov.body,_overridden:true}:r;
+    });
+    var all=srdRules.concat(customRules);
     var filtered=all.filter(function(r){
       var catMatch=_rulesFilter.cat==='All'||r.cat===_rulesFilter.cat;
       var q=_rulesFilter.search;
@@ -2082,11 +2091,11 @@ function renderRulesList(){
     });
     if(!filtered.length){el.innerHTML='<div style="padding:12px;font-size:13px;color:var(--text-muted)">No rules match.</div>';_appendRulesForm(el);return;}
     el.innerHTML=filtered.map(function(r){
-      var customControls=r._rule?'<button class="rule-edit-btn" data-ruleedit="'+escH(r.id)+'">&#x270E;</button><button class="rule-del-btn" data-ruledel="'+escH(r.id)+'">&times;</button>':'';
-      return '<div class="rule-card'+(r._rule?' custom':'')+'"><div class="rule-card-header" onclick="toggleRuleCard(\''+escH(r.id)+'\')">'
+      var cardClass='rule-card'+(r._rule?' custom':'')+(r._overridden?' override':'');
+      return '<div class="'+cardClass+'"><div class="rule-card-header" onclick="toggleRuleCard(\''+escH(r.id)+'\')">'
         +'<span class="rule-card-name">'+escH(r.name)+'</span>'
         +'<span class="rule-card-summary">'+escH(r.summary)+'</span>'
-        +customControls
+        +'<button class="rule-edit-btn" data-ruleedit="'+escH(r.id)+'">&#x270E;</button>'
         +'<span class="rule-card-chevron" id="rchev-'+escH(r.id)+'">&#x25BC;</span>'
         +'</div>'
         +'<div class="rule-card-body" id="rbody-'+escH(r.id)+'">'+escH(r.body)+'</div>'
