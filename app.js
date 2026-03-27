@@ -2100,10 +2100,16 @@ function renderRulesList(){
 function _appendRulesForm(el){
   el.innerHTML+='<button class="rules-add-btn" onclick="toggleRulesForm()">&#xFF0B; Add Custom Rule</button>'
     +'<div class="rules-inline-form" id="rules-add-form">'
-    +'<input class="rif-input" id="rif-name" placeholder="Rule name"><input class="rif-input" id="rif-cat" placeholder="Category (e.g. Combat)">'
+    +'<input class="rif-input" id="rif-name" placeholder="Rule name">'
+    +'<div id="rif-cat-row"><input class="rif-input" id="rif-cat" placeholder="Category (e.g. Combat)"></div>'
     +'<input class="rif-input" id="rif-summary" placeholder="One-line summary">'
     +'<textarea class="rif-textarea" id="rif-body" placeholder="Full rule text\u2026"></textarea>'
-    +'<div class="rif-actions"><button class="rif-save" onclick="saveCustomRule()">Save</button><button class="rif-cancel" onclick="toggleRulesForm()">Cancel</button></div>'
+    +'<div class="rif-actions">'
+    +'<button class="rif-save" onclick="saveCustomRule()">Save</button>'
+    +'<button class="rule-restore-btn" data-rulerestore="">&#x21BA; Restore Default</button>'
+    +'<button class="rule-del-form-btn" data-ruledelfm="">&#xD7; Delete</button>'
+    +'<button class="rif-cancel" onclick="cancelRulesForm()">Cancel</button>'
+    +'</div>'
     +'</div>';
 }
 
