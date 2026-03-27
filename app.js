@@ -103,6 +103,7 @@ function _panelHTML(id,html){
     +'<tr><td><code>[[encounter:Name]]</code></td><td>Load encounter</td></tr>'
     +'</tbody></table>'
     +'</div>'
+    +'<button class="md-export-btn" onclick="exportLoreMd(\''+id+'\')" title="Download as .md file">⬇ Export</button>'
     +'<button class="md-edit-btn" onclick="toggleLoreEdit(\''+id+'\')">✏ Edit</button>'
     +'</div>'
     +'<div class="md-content">'+html+'</div>'
@@ -153,6 +154,7 @@ function toggleLoreEdit(id){
   mdPanel.classList.add('md-editing');
   panel.querySelector('.md-edit-btn').textContent='👁 Preview';
   panel.querySelector('.md-help-btn').style.display='';
+  panel.querySelector('.md-export-btn').style.display='none';
   ta.focus();
 }
 
@@ -167,6 +169,7 @@ function commitLoreEdit(id){
   panel.querySelector('.md-content').style.display='';
   ta.remove();
   panel.querySelector('.md-help-btn').style.display='none';
+  panel.querySelector('.md-export-btn').style.display='';
   panel.querySelector('.md-help-popover').style.display='none';
   mdPanel.classList.remove('md-editing');
   panel.querySelector('.md-edit-btn').textContent='✏ Edit';
@@ -183,9 +186,22 @@ function cancelLoreEdit(id){
   panel.querySelector('.md-content').style.display='';
   ta.remove();
   panel.querySelector('.md-help-btn').style.display='none';
+  panel.querySelector('.md-export-btn').style.display='';
   panel.querySelector('.md-help-popover').style.display='none';
   mdPanel.classList.remove('md-editing');
   panel.querySelector('.md-edit-btn').textContent='✏ Edit';
+}
+
+function exportLoreMd(id){
+  var entry=tabOrder.find(function(e){return e.type==='lore'&&e.id===id;});
+  var title=entry?entry.title:'lore';
+  var filename=title.replace(/[/\\]/g,'-')+'.md';
+  var blob=new Blob([tabRawMd[id]||''],{type:'text/markdown'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=filename;
+  a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},100);
 }
 
 function toggleMdHelp(id){
