@@ -2039,6 +2039,7 @@ var RULES=[
 var _rulesRendered=false;
 var _rulesFilter={search:'',cat:'All'};
 var _ruleEditId=null;
+var _ruleEditIsOverride=false;
 
 function renderRulesTab(){
   _rulesRendered=true;
@@ -2122,6 +2123,26 @@ function toggleRuleCard(id){
 }
 function toggleRulesForm(){
   document.getElementById('rules-add-form').classList.toggle('open');
+}
+
+function cancelRulesForm(){
+  _ruleEditId=null;
+  _ruleEditIsOverride=false;
+  var form=document.getElementById('rules-add-form');
+  if(!form)return;
+  form.classList.remove('is-srd','is-override','is-custom','open');
+  ['rif-name','rif-cat','rif-summary','rif-body'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+}
+
+function restoreDefaultRule(id){
+  if(!confirm('Restore this rule to its SRD default? Your changes will be lost.'))return;
+  db_delete('toolkit_notes',id).then(function(){
+    showToast('Rule restored to default.');
+    cancelRulesForm();
+    renderRulesList();
+  });
 }
 
 function saveCustomRule(){
