@@ -19,6 +19,8 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - Drag-and-drop `.md` files to open them as wiki-style reference tabs
 - `[[encounter:Name]]` links — clickable gold links that load a saved encounter directly into combat
 - **In-browser editing** — click `✏ Edit` (top-right of any lore tab) to edit the raw markdown; click `👁 Preview` to re-render and save; press `Escape` to cancel without saving
+- **Export tab** — in preview mode, click `⬇ Export` to download the tab's raw markdown as `<tab-title>.md`
+- **Smart list continuation** — in the editor, pressing Enter on a bullet (`-` or `*`) or numbered list item auto-starts the next item; pressing Enter on an empty list item exits the list
 - **Add lore tab** — click the `📜 +` button in the tab bar for a dropdown: **New Blank Tab** or **Upload .md File**
 
 ### Saved Encounters
@@ -121,6 +123,8 @@ BP budget = player count × 3 (default). Adjust in the sidebar.
 - Drag any `.md` file onto the browser window to open it as a tab
 - Click `📜 +` in the tab bar → choose **New Blank Tab** or **Upload .md File**
 - Click `✏ Edit` (top-right of any lore tab) to edit in-browser; `Escape` cancels, `👁 Preview` saves
+- In preview mode, click `⬇ Export` to download the tab as a `.md` file
+- In the editor, pressing Enter on a list item (`-`, `*`, or `1.`) auto-continues the list; pressing Enter on an empty list item exits the list
 - Use `[[encounter:Goblin Ambush]]` to create a clickable gold link that loads that saved encounter
 
 ---
