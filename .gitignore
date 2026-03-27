@@ -5,4 +5,8 @@
 .claude/
 
 # AI-assisted development working docs (internal only)
+.superpowers/
 docs/superpowers/
+
+# Project instructions (internal only)
+CLAUDE.md
