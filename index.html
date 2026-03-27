@@ -37,6 +37,7 @@
     </div>
   </div>
   <input type="file" id="tab-upload-input" accept=".md,.markdown" multiple style="display:none" onchange="handleFileUpload(this.files)">
+  <button id="settings-btn" onclick="openSettingsModal()" title="Export / Import data">⚙</button>
   <div id="gm-badge">
     <span>THE MOTHER TREE</span>
     <strong>GM INTERFACE</strong>
@@ -146,6 +147,20 @@
       <button class="sm-close" onclick="closeSettingsModal()">✕</button>
     </div>
     <div class="sm-body">
+      <div class="sm-theme-row">
+        <label class="sm-theme-label" for="theme-select">Theme</label>
+        <select id="theme-select" class="sm-select" onchange="applyTheme(this.value);db_setting('theme',this.value).catch(function(){})">
+          <option>Mother Tree</option>
+          <option>Void Court</option>
+          <option>Ember Keep</option>
+          <option>Sunken Archive</option>
+          <option>Iron Reliquary</option>
+          <option>Crimson Pact</option>
+          <option>Verdant Spire</option>
+          <option>Starfall</option>
+          <option>Ashwood</option>
+        </select>
+      </div>
       <p class="sm-desc">Export your data as a JSON backup or restore from a previous export. Import overwrites all current data.</p>
       <div class="sm-actions">
         <button class="sm-btn sm-btn-export" onclick="exportData()">⬇ Export JSON</button>

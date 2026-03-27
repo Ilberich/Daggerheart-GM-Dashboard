@@ -8,7 +8,8 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 
 ### Combat Tracker
 - **Battle Point budget** — set player count; the app calculates your BP total automatically
-- **Arsenal sidebar** — 60+ built-in adversaries across 10 types (Solo, Bruiser, Leader, Horde, Ranged, Skulk, Standard, Minion, Support, Social)
+- **Arsenal sidebar** — 132 built-in SRD adversaries across all 4 tiers and 10 types (Solo, Bruiser, Leader, Horde, Ranged, Skulk, Standard, Minion, Support, Social)
+- **Tier + Type filters** — two dropdown menus (Tier and Type) replace the old pill buttons; filter state persists across sessions
 - **Encounter queue** — stage adversaries before starting; save queues as named encounters for reuse
 - **Live combat cards** — HP dots, Stress dots, status conditions (Vulnerable, Hidden, Restrained), ability panels, and mid-battle add/remove
 - **Multiple battle tabs** — prep several encounters at once and switch between them without losing state; all tabs are closeable including the last one
@@ -44,6 +45,11 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 ### Data Persistence & Backup
 - All state saved to **IndexedDB** — survives page refresh
 - **Export / Import JSON** — back up your full session (combat, notes, encounters, library) to a file; restore on any device
+
+### Themes
+- **9 dark themes** — all designed for GM-screen use; switch instantly via the ⚙ Settings modal
+- **Persists across sessions** — your chosen theme is restored on every load
+- Themes: Mother Tree *(default)*, Void Court, Ember Keep, Sunken Archive, Iron Reliquary, Crimson Pact, Verdant Spire, Starfall, Ashwood
 
 ### Adversary .MD Format
 
@@ -89,7 +95,7 @@ Requires Node.js (any recent version).
 
 ```bash
 node build.js
-# Output: dist/index.html (~280 KB, fully self-contained)
+# Output: dist/index.html (~370 KB, fully self-contained)
 ```
 
 Rebuild any time you edit `styles.css`, `app.js`, or `vendor/marked-compat.js`.
