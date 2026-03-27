@@ -21,7 +21,7 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - **In-browser editing** — click `✏ Edit` (top-right of any lore tab) to edit the raw markdown; click `👁 Preview` to re-render and save; press `Escape` to cancel without saving
 - **Export tab** — in preview mode, click `⬇ Export` to download the tab's raw markdown as `<tab-title>.md`
 - **Smart list continuation** — in the editor, pressing Enter on a bullet (`-` or `*`) or numbered list item auto-starts the next item; pressing Enter on an empty list item exits the list
-- **Add lore tab** — click the `📜 +` button in the tab bar for a dropdown: **New Blank Tab** or **Upload .md File**
+- **Add lore tab** — click the book-icon `+` button in the tab bar for a dropdown: **New Blank Tab** or **Upload .md File**
 
 ### Saved Encounters
 - Save any staged encounter queue with a name
@@ -49,7 +49,7 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - **Export / Import JSON** — back up your full session (combat, notes, encounters, library) to a file; restore on any device
 
 ### Themes
-- **9 dark themes** — all designed for GM-screen use; switch instantly via the ⚙ Settings modal
+- **9 dark themes** — all designed for GM-screen use; switch instantly via the gear-icon Settings modal
 - **Persists across sessions** — your chosen theme is restored on every load
 - Themes: Mother Tree *(default)*, Void Court, Ember Keep, Sunken Archive, Iron Reliquary, Crimson Pact, Verdant Spire, Starfall, Ashwood
 
@@ -121,7 +121,7 @@ BP budget = player count × 3 (default). Adjust in the sidebar.
 ## Lore Tab Tips
 
 - Drag any `.md` file onto the browser window to open it as a tab
-- Click `📜 +` in the tab bar → choose **New Blank Tab** or **Upload .md File**
+- Click the book-icon `+` in the tab bar → choose **New Blank Tab** or **Upload .md File**
 - Click `✏ Edit` (top-right of any lore tab) to edit in-browser; `Escape` cancels, `👁 Preview` saves
 - In preview mode, click `⬇ Export` to download the tab as a `.md` file
 - In the editor, pressing Enter on a list item (`-`, `*`, or `1.`) auto-continues the list; pressing Enter on an empty list item exits the list
