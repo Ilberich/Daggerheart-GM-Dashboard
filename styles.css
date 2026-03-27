@@ -181,6 +181,22 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
   background:rgba(212,168,67,.08);
   border-color:var(--gold-dim);
 }
+.md-export-btn{
+  padding:4px 10px;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:5px;
+  color:var(--text-muted);
+  font-family:'Crimson Pro',Georgia,serif;
+  font-size:13px;font-weight:600;
+  cursor:pointer;
+  transition:color .15s,background .15s,border-color .15s;
+}
+.md-export-btn:hover{
+  color:var(--gold);
+  background:rgba(212,168,67,.08);
+  border-color:var(--gold-dim);
+}
 .md-help-btn{
   width:26px;height:26px;padding:0;
   background:var(--surface2);

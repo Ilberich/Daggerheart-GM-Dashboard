@@ -195,7 +195,7 @@ function cancelLoreEdit(id){
 function exportLoreMd(id){
   var entry=tabOrder.find(function(e){return e.type==='lore'&&e.id===id;});
   var title=entry?entry.title:'lore';
-  var filename=title.replace(/[/\\]/g,'-')+'.md';
+  var filename=title.replace(/[/\\:*?"<>|]/g,'-')+'.md';
   var blob=new Blob([tabRawMd[id]||''],{type:'text/markdown'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
