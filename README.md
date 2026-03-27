@@ -7,9 +7,9 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 ## Features
 
 ### Combat Tracker
-- **Battle Point budget** — set player count; the app calculates your BP total automatically
+- **Battle Point budget** — set player count; the app calculates your BP total automatically; adding adversaries beyond the budget is allowed — the progress bar pulses red as a warning
 - **Arsenal sidebar** — 132 built-in SRD adversaries across all 4 tiers and 10 types (Solo, Bruiser, Leader, Horde, Ranged, Skulk, Standard, Minion, Support, Social)
-- **Tier + Type filters** — two dropdown menus (Tier and Type) replace the old pill buttons; filter state persists across sessions
+- **Tier + Type filters** — two dropdown menus (Tier and Type); filter state persists across sessions
 - **Encounter queue** — stage adversaries before starting; save queues as named encounters for reuse
 - **Live combat cards** — HP dots, Stress dots, status conditions (Vulnerable, Hidden, Restrained), ability panels, and mid-battle add/remove
 - **Multiple battle tabs** — prep several encounters at once and switch between them without losing state; all tabs are closeable including the last one
@@ -44,6 +44,12 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - See [`sample_adversary.md`](sample_adversary.md) for the exact file format
 - Custom adversaries can still be edited or deleted via the edit/delete buttons in the Arsenal list
 
+### Adversary .MD Format
+
+Upload adversaries from `.md` files using YAML frontmatter. Required fields: `name`, `type`, `dc`, `hp`, `st`, `maj`, `atk`, `wpn`, `dmg`. Optional: `sev`, `motives`. Abilities go under `## Abilities` using `### Ability Name` headings followed by `**tag** — description`. A `## Tactics` section is ignored (GM-only notes).
+
+See [`sample_adversary.md`](sample_adversary.md) for a complete working example.
+
 ### Data Persistence & Backup
 - All state saved to **IndexedDB** — survives page refresh
 - **Export / Import JSON** — back up your full session (combat, notes, encounters, library) to a file; restore on any device
@@ -53,85 +59,19 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - **Persists across sessions** — your chosen theme is restored on every load
 - Themes: Mother Tree *(default)*, Void Court, Ember Keep, Sunken Archive, Iron Reliquary, Crimson Pact, Verdant Spire, Starfall, Ashwood
 
-### Adversary .MD Format
-
-Upload adversaries from `.md` files using YAML frontmatter. Required fields: `name`, `type`, `dc`, `hp`, `st`, `maj`, `atk`, `wpn`, `dmg`. Optional: `sev`, `motives`. Abilities go under `## Abilities` using `### Ability Name` headings followed by `**tag** — description`. A `## Tactics` section is ignored (GM-only notes).
-
-See [`sample_adversary.md`](sample_adversary.md) for a complete working example.
-
----
-
-## Sidebar Toggle Fix
-
-The Arsenal sidebar toggle button is now 38×38 px (up from 30×30 px) with a larger 20 px icon, positioned slightly inward from the left edge to avoid curved-screen bezel clipping on phones. On mobile it also has `touch-action:manipulation` set for reliable tap behaviour.
-
 ---
 
 ## Getting Started
+
+**Try it live:** [https://ilberich.github.io/Daggerheart-GM-Dashboard/](https://ilberich.github.io/Daggerheart-GM-Dashboard/)
+
+Or run it locally:
 
 1. Download or clone this repository
 2. Open `dist/index.html` in any modern browser
 3. That's it — no build step needed to use the app
 
 > **Mobile / offline use:** Always open `dist/index.html`, not `index.html`. The dist file is a self-contained bundle with all CSS and JS inlined, which avoids asset-loading failures over `file://`.
-
----
-
-## File Layout
-
-| File | Purpose |
-|------|---------|
-| `index.html` | HTML markup (source) |
-| `styles.css` | All CSS (source) |
-| `app.js` | All JavaScript (source) |
-| `vendor/marked-compat.js` | Local Markdown parser — no CDN |
-| `build.js` | Node.js bundle script |
-| `dist/index.html` | **Self-contained bundle — use this one** |
-| `manifest.json` / `sw.js` / `icon.svg` | PWA support files |
-
----
-
-## Building from Source
-
-Requires Node.js (any recent version).
-
-```bash
-node build.js
-# Output: dist/index.html (~370 KB, fully self-contained)
-```
-
-Rebuild any time you edit `styles.css`, `app.js`, or `vendor/marked-compat.js`.
-
----
-
-## Adversary Types & Battle Points
-
-| Type | BP Cost | Role |
-|------|---------|------|
-| Solo | 5 | Boss-level; acts multiple times |
-| Bruiser | 4 | High HP, hard-hitting |
-| Leader | 3 | Buffs allies, priority target |
-| Horde / Ranged / Skulk / Standard | 2 | Core combat roles |
-| Minion / Support / Social | 1 | Support roles, group fillers |
-
-BP budget = player count × 3 (default). Adjust in the sidebar.
-
----
-
-## Lore Tab Tips
-
-- Drag any `.md` file onto the browser window to open it as a tab
-- Click the book-icon `+` in the tab bar → choose **New Blank Tab** or **Upload .md File**
-- Click `✏ Edit` (top-right of any lore tab) to edit in-browser; `Escape` cancels, `👁 Preview` saves
-- In preview mode, click `⬇ Export` to download the tab as a `.md` file
-- In the editor, pressing Enter on a list item (`-`, `*`, or `1.`) auto-continues the list; pressing Enter on an empty list item exits the list
-- Use `[[encounter:Goblin Ambush]]` to create a clickable gold link that loads that saved encounter
-
----
-
-## Compatibility
-
-Works in any modern Chromium or Firefox browser. Tested on desktop and mobile (Chrome on Android, Safari on iOS). Requires IndexedDB support (all modern browsers).
 
 ---
 
