@@ -1668,22 +1668,59 @@ document.addEventListener('click',function(e){
   if(removeBtn){document.getElementById(removeBtn.dataset.rowid)?.remove();return;}
   var editRuleBtn=e.target.closest('[data-ruleedit]');
   if(editRuleBtn){
-    db_get('toolkit_notes',editRuleBtn.dataset.ruleedit).then(function(rec){
-      if(!rec)return;
-      _ruleEditId=rec.id;
-      var form=document.getElementById('rules-add-form');
-      if(!form)return;
-      document.getElementById('rif-name').value=rec.name||'';
-      document.getElementById('rif-cat').value=rec.cat||'';
-      document.getElementById('rif-summary').value=rec.summary||'';
-      document.getElementById('rif-body').value=rec.body||'';
-      form.classList.add('open');
+    var ruleId=editRuleBtn.dataset.ruleedit;
+    db_get('toolkit_notes',ruleId).then(function(rec){
+      var form=document.getElementById('rules-add-form');if(!form)return;
+      cancelRulesForm(); // clear previous state before opening
+      _ruleEditId=ruleId;
+      if(rec&&rec._override){
+        // Modified SRD rule — populate from override record
+        _ruleEditIsOverride=true;
+        document.getElementById('rif-name').value=rec.name||'';
+        document.getElementById('rif-summary').value=rec.summary||'';
+        document.getElementById('rif-body').value=rec.body||'';
+        form.classList.add('is-srd','is-override','open');
+        var restoreBtn=form.querySelector('[data-rulerestore]');
+        if(restoreBtn)restoreBtn.dataset.rulerestore=ruleId;
+      } else if(!rec){
+        // Unmodified SRD rule — look up from RULES[]
+        var srdRule=RULES.find(function(r){return r.id===ruleId;});
+        if(!srdRule)return;
+        _ruleEditIsOverride=true;
+        document.getElementById('rif-name').value=srdRule.name||'';
+        document.getElementById('rif-summary').value=srdRule.summary||'';
+        document.getElementById('rif-body').value=srdRule.body||'';
+        form.classList.add('is-srd','open');
+      } else {
+        // Custom rule
+        _ruleEditIsOverride=false;
+        document.getElementById('rif-name').value=rec.name||'';
+        document.getElementById('rif-cat').value=rec.cat||'';
+        document.getElementById('rif-summary').value=rec.summary||'';
+        document.getElementById('rif-body').value=rec.body||'';
+        var delBtn=form.querySelector('[data-ruledelfm]');
+        if(delBtn)delBtn.dataset.ruledelfm=ruleId;
+        form.classList.add('is-custom','open');
+      }
       form.scrollIntoView({behavior:'smooth'});
     });
     return;
   }
-  var delRuleBtn=e.target.closest('[data-ruledel]');
-  if(delRuleBtn){deleteCustomRule(delRuleBtn.dataset.ruledel);return;}
+  var restoreRuleBtn=e.target.closest('[data-rulerestore]');
+  if(restoreRuleBtn&&restoreRuleBtn.dataset.rulerestore){
+    restoreDefaultRule(restoreRuleBtn.dataset.rulerestore);return;
+  }
+  var delFormBtn=e.target.closest('[data-ruledelfm]');
+  if(delFormBtn&&delFormBtn.dataset.ruledelfm){
+    var delId=delFormBtn.dataset.ruledelfm;
+    if(!confirm('Delete this custom rule?'))return;
+    db_delete('toolkit_notes',delId).then(function(){
+      showToast('Rule deleted.');
+      cancelRulesForm();
+      renderRulesList();
+    });
+    return;
+  }
   var nedit=e.target.closest('[data-ncedit]');
   if(nedit){
     db_get('toolkit_notes',nedit.dataset.ncedit).then(function(rec){
