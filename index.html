@@ -48,11 +48,11 @@
 <div class="tab-panel active" id="panel-combat">
   <div id="combat-tab-panel" style="display:flex;flex:1;overflow:hidden;">
 
+    <button id="sidebar-toggle" title="Toggle Arsenal" onclick="toggleSidebar()">☰</button>
     <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
     <div id="sidebar">
       <div id="sidebar-inner">
         <div class="sidebar-header">
-          <button id="sidebar-toggle" title="Toggle Arsenal" onclick="toggleSidebar()">☰</button>
           <h2>⚔ Adversary Arsenal</h2>
           <label class="upload-adv-btn" title="Upload a .md adversary file">
             ⬆ Upload Adversary
@@ -68,16 +68,7 @@
           <div class="bp-spent">Used: <span id="bp-spent" style="color:var(--fear)">0</span> · Remaining: <span id="bp-rem" style="color:var(--green)">14</span></div>
           <div class="bp-bar-wrap"><div class="bp-bar" id="bp-bar" style="width:0%"></div></div>
         </div>
-        <div class="cost-legend">
-          <div class="cost-legend-title">Battle Point Costs</div>
-          <div class="cost-items">
-            <div class="cost-pill">Minion/Social/Support <b>1pt</b></div>
-            <div class="cost-pill">Horde/Ranged/Skulk/Standard <b>2pt</b></div>
-            <div class="cost-pill">Leader <b>3pt</b></div>
-            <div class="cost-pill">Bruiser <b>4pt</b></div>
-            <div class="cost-pill">Solo <b>5pt</b></div>
-          </div>
-        </div>
+
         <div class="adv-search">
           <input type="search" class="adv-search-input" id="adv-search" placeholder="Search adversaries…" oninput="setSearch(this.value)" autocomplete="off">
         </div>

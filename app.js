@@ -788,8 +788,6 @@ const STATUSES=['Vulnerable','Hidden','Restrained'];
 // §ENCOUNTER_QUEUE
 function addToQueue(id){
   const a=ADV.find(x=>x.id===id);if(!a)return;
-  const cost=COSTS[a.type];
-  if(bpTotal-bpSpent<cost)return;
   if(battleStarted){addCombatant(a);return;}
   cart.push({...a,_iid:++iid});
   syncBP();renderList();renderStage();statusBar();saveSession();
@@ -1662,7 +1660,6 @@ function loadSession(){
 // §ADV_LIST
 // ── Unified renderList (replaces the earlier one) ─────────
 function renderList(){
-  var rem=bpTotal-bpSpent;
   var filtered=ADV;
   if(filterTier!=='all')filtered=filtered.filter(function(a){return a.tier==filterTier;});
   if(filterType!=='all')filtered=filtered.filter(function(a){return a.type===filterType;});
@@ -1674,7 +1671,6 @@ function renderList(){
     var items=groups[type];if(!items.length)return;
     html+='<div class="type-group"><div class="type-header"><span>'+ICONS[type]+'</span>'+cap(type)+' · '+COSTS[type]+'pt each</div>';
     items.forEach(function(a){
-      var oop=rem<COSTS[a.type];
       var thrStr=a.maj!=null?(''+a.maj+(a.sev!=null?'/'+a.sev:'/—')):'None';
       var isOpen=expanded.has(a.id);
       var abilities=(a.feats||[]).map(function(f){return '<div class="ability-item"><div class="ability-header">'+tagHTML(f.k)+'<span class="ability-name">'+f.n+'</span></div><div class="ability-desc">'+f.d+'</div></div>';}).join('');
@@ -1683,8 +1679,8 @@ function renderList(){
         ?'<button class="adv-expand-strip" data-editid="'+a.id+'" title="Edit" style="font-size:13px">✎</button>'
          +'<button class="adv-delete-btn" data-delid="'+a.id+'" title="Delete">🗑</button>'
         :'';
-      html+='<div class="adv-card'+(oop?' out-of-budget':'')+'"><div class="adv-main">'
-        +'<div class="adv-add-zone"'+(oop?'':' data-addid="'+a.id+'"')+'>'
+      html+='<div class="adv-card"><div class="adv-main">'
+        +'<div class="adv-add-zone" data-addid="'+a.id+'">'
         +'<div class="adv-top"><span class="adv-name">'+a.name+'</span>'+customBadge+'<span class="adv-cost-badge">'+COSTS[a.type]+'pt</span></div>'
         +'<div class="adv-stats"><span class="adv-stat">DC<span>'+a.dc+'</span></span><span class="adv-stat">HP<span>'+a.hp+'</span></span><span class="adv-stat">ST<span>'+a.st+'</span></span><span class="adv-stat">THR<span>'+thrStr+'</span></span><span class="adv-stat">ATK<span>'+a.atk+'</span></span></div>'
         +'<div class="adv-atk-line">'+a.dmg+' · '+a.wpn+'</div>'
