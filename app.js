@@ -103,6 +103,7 @@ function _panelHTML(id,html){
     +'<tr><td><code>[[encounter:Name]]</code></td><td>Load encounter</td></tr>'
     +'</tbody></table>'
     +'</div>'
+    +'<button class="md-export-btn" onclick="exportLoreMd(\''+id+'\')" title="Download as .md file">⬇ Export</button>'
     +'<button class="md-edit-btn" onclick="toggleLoreEdit(\''+id+'\')">✏ Edit</button>'
     +'</div>'
     +'<div class="md-content">'+html+'</div>'
@@ -146,13 +147,52 @@ function toggleLoreEdit(id){
   ta.className='md-edit-area';
   ta.value=tabRawMd[id]||'';
   ta.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){e.preventDefault();cancelLoreEdit(id);}
+    if(e.key==='Escape'){e.preventDefault();cancelLoreEdit(id);return;}
+    if(e.key==='Enter'){
+      var val=ta.value;
+      var pos=ta.selectionStart;
+      var lineStart=val.lastIndexOf('\n',pos-1)+1;
+      var line=val.slice(lineStart,pos);
+
+      var bulletMatch=line.match(/^(\s*[-*] )(.*)/);
+      var orderedMatch=line.match(/^(\s*)(\d+)\. (.*)/);
+
+      if(bulletMatch){
+        e.preventDefault();
+        if(bulletMatch[2]===''){
+          // Empty bullet — exit list
+          var bbefore=val.slice(0,lineStart);
+          var bafter=val.slice(pos);
+          ta.value=bbefore+'\n'+bafter;
+          ta.selectionStart=ta.selectionEnd=lineStart+1;
+        }else{
+          var binsert='\n'+bulletMatch[1];
+          ta.value=val.slice(0,pos)+binsert+val.slice(ta.selectionEnd);
+          ta.selectionStart=ta.selectionEnd=pos+binsert.length;
+        }
+      }else if(orderedMatch){
+        e.preventDefault();
+        var nextNum=parseInt(orderedMatch[2],10)+1;
+        if(orderedMatch[3]===''){
+          // Empty ordered item — exit list
+          var obefore=val.slice(0,lineStart);
+          var oafter=val.slice(pos);
+          ta.value=obefore+'\n'+oafter;
+          ta.selectionStart=ta.selectionEnd=lineStart+1;
+        }else{
+          var oinsert='\n'+orderedMatch[1]+nextNum+'. ';
+          ta.value=val.slice(0,pos)+oinsert+val.slice(ta.selectionEnd);
+          ta.selectionStart=ta.selectionEnd=pos+oinsert.length;
+        }
+      }
+    }
   });
   panel.querySelector('.md-content').style.display='none';
   mdPanel.appendChild(ta);
   mdPanel.classList.add('md-editing');
   panel.querySelector('.md-edit-btn').textContent='👁 Preview';
   panel.querySelector('.md-help-btn').style.display='';
+  panel.querySelector('.md-export-btn').style.display='none';
   ta.focus();
 }
 
@@ -167,6 +207,7 @@ function commitLoreEdit(id){
   panel.querySelector('.md-content').style.display='';
   ta.remove();
   panel.querySelector('.md-help-btn').style.display='none';
+  panel.querySelector('.md-export-btn').style.display='';
   panel.querySelector('.md-help-popover').style.display='none';
   mdPanel.classList.remove('md-editing');
   panel.querySelector('.md-edit-btn').textContent='✏ Edit';
@@ -183,9 +224,22 @@ function cancelLoreEdit(id){
   panel.querySelector('.md-content').style.display='';
   ta.remove();
   panel.querySelector('.md-help-btn').style.display='none';
+  panel.querySelector('.md-export-btn').style.display='';
   panel.querySelector('.md-help-popover').style.display='none';
   mdPanel.classList.remove('md-editing');
   panel.querySelector('.md-edit-btn').textContent='✏ Edit';
+}
+
+function exportLoreMd(id){
+  var entry=tabOrder.find(function(e){return e.type==='lore'&&e.id===id;});
+  var title=entry?entry.title:'lore';
+  var filename=title.replace(/[/\\:*?"<>|]/g,'-')+'.md';
+  var blob=new Blob([tabRawMd[id]||''],{type:'text/markdown'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=filename;
+  a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},100);
 }
 
 function toggleMdHelp(id){
