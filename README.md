@@ -27,7 +27,7 @@ A fully offline, single-page GM tool for running [Daggerheart](https://darringto
 - Saving an encounter auto-renames the battle tab to match
 
 ### Toolkit Panel (right-side drawer)
-- **Rules Reference** — searchable Daggerheart cheat sheet (60+ entries across 16 categories); add custom rules
+- **Rules Reference** — searchable Daggerheart cheat sheet (60+ entries across 16 categories); add custom rules; click ✎ on any rule to override its text with homebrew content; click ↺ Restore Default to revert. Custom rules can be deleted from the edit form.
 - **Session Notes** — freeform scratchpad + pinnable NPC / Threat / Loot cards
 - **Generators**
   - NPC Name Generator (6 cultural styles; pin names to notes)
