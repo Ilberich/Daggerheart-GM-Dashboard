@@ -165,7 +165,7 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
   display:flex;align-items:center;gap:4px;
   position:relative;
 }
-.md-edit-btn{
+.md-edit-btn,.md-export-btn{
   padding:4px 10px;
   background:var(--surface2);
   border:1px solid var(--border2);
@@ -176,7 +176,7 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
   cursor:pointer;
   transition:color .15s,background .15s,border-color .15s;
 }
-.md-edit-btn:hover{
+.md-edit-btn:hover,.md-export-btn:hover{
   color:var(--gold);
   background:rgba(212,168,67,.08);
   border-color:var(--gold-dim);

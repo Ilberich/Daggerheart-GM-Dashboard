@@ -40,19 +40,6 @@ Once the adversary purchase sidebar is minimized, there is no way to reopen it e
 
 ## SRD Compliance Pass
 
-*Do R1 and Plan E together — both touch `ADV[]` and the built-in content lists, so a single editing pass + one build + one README update covers both.*
-
-### 🔲 R1. Remove Non-SRD Content — High Priority
-
-Audit all built-in content (adversaries, environments, rules text) against the Daggerheart SRD and remove anything not covered by the license. Non-SRD material may violate the license terms.
-
-- [ ] Audit `ADV[]` in `app.js` — flag any adversaries not present in the SRD
-- [ ] Audit Rules Reference content in the Toolkit panel — remove or replace non-SRD rules text
-- [ ] Audit Environments in the Toolkit panel — remove any non-SRD entries
-- [ ] Rebuild + update README
-
----
-
 ### ✅ Plan E: Higher-Tier Adversaries + Filter Redesign
 
 Add Tier 2/3/4 adversaries from the SRD and replace the Arsenal's pill-button type filter with two side-by-side `<select>` dropdowns (Tier + Type). All 132 SRD adversaries available; filter state persisted in session.
@@ -75,20 +62,21 @@ Add Tier 2/3/4 adversaries from the SRD and replace the Arsenal's pill-button ty
 
 ## Toolkit Enhancement
 
-### 🔲 Plan D: Editable SRD Rules
+### ✅ Plan D: Editable SRD Rules
 
 Allow GMs to override any built-in SRD rule with homebrew text. Overrides stored in IndexedDB (`toolkit_notes`, `_override: true`). Restore Default reverts to SRD original. All destructive actions live inside the edit form, not on card faces.
 
 **Plan file:** `docs/superpowers/plans/2026-03-24-editable-srd-rules.md`
 **Spec:** `docs/superpowers/specs/2026-03-24-editable-srd-rules-design.md`
+**PR:** https://github.com/Ilberich/Daggerheart-GM-Dashboard/pull/16
 
-- [ ] Task 1: CSS — override card & conditional form buttons
-- [ ] Task 2: Update `_appendRulesForm` — form structure
-- [ ] Task 3: Add `cancelRulesForm` and `restoreDefaultRule`
-- [ ] Task 4: Update `renderRulesList` — override map & universal edit button
-- [ ] Task 5: Update click handler
-- [ ] Task 6: Update `saveCustomRule` — override branch
-- [ ] Task 7: Build + README
+- [x] Task 1: CSS — override card & conditional form buttons
+- [x] Task 2: Update `_appendRulesForm` — form structure
+- [x] Task 3: Add `cancelRulesForm` and `restoreDefaultRule`
+- [x] Task 4: Update `renderRulesList` — override map & universal edit button
+- [x] Task 5: Update click handler
+- [x] Task 6: Update `saveCustomRule` — override branch
+- [x] Task 7: Build + README
 
 ---
 
@@ -122,6 +110,19 @@ A landing/home screen that lets the GM see, name, and switch between multiple sa
 # Completed
 
 > Items below are done and kept for reference only.
+
+## ✅ SRD Compliance Pass
+
+### ✅ R1. Remove Non-SRD Content
+
+Audited all built-in content against the Daggerheart SRD. Completed alongside Plan E.
+
+- [x] Audit `ADV[]` in `app.js` — flag any adversaries not present in the SRD
+- [x] Audit Rules Reference content in the Toolkit panel — remove or replace non-SRD rules text
+- [x] Audit Environments in the Toolkit panel — remove any non-SRD entries
+- [x] Rebuild + update README
+
+---
 
 ## ✅ Required Tasks
 
