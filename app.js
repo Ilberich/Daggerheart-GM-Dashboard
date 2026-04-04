@@ -1024,7 +1024,7 @@ function db_migrate(){
     if(advRaw){
       try{
         JSON.parse(advRaw).forEach(function(a){
-          if(!a.id)a.id='custom_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+          if(!a.id)a.id='custom_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
           promises.push(db_put('custom_adversaries',a));
         });
       }catch(e){}
@@ -1298,7 +1298,7 @@ function saveCustomAdvStorage(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(customAdv));}catch(e){}
 }
 
-function parseAdvMd(raw,filename){
+function parseAdvMd(raw){
   var text=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   // Extract YAML frontmatter between first pair of --- delimiters
   var fm={};
@@ -2013,8 +2013,8 @@ var RULES=[
    summary:'PC becomes Vulnerable when Stress track is full.',
    body:'When a PC\'s Stress track is full, they become Vulnerable.'},
   {id:'r-stress-clear',cat:'Stress',name:'Clearing Stress',
-   summary:'Some abilities clear Stress. Short Rest clears all.',
-   body:'Some abilities clear Stress. Short Rest clears all Stress (and repairs armor). Long Rest also clears Stress, plus clears all Hit Points and removes Vulnerable condition.'},
+   summary:'Some abilities clear Stress. Short Rest: 1d4+Tier. Long Rest: all Stress.',
+   body:'Some abilities clear Stress. On a Short Rest, the "Clear Stress" downtime move clears 1d4+Tier Stress. On a Long Rest, "Clear All Stress" clears all Stress. Each PC chooses 2 downtime moves per rest and may pick the same move twice.'},
   // ── Countdowns ──
   {id:'r-countdown',cat:'Countdowns',name:'Standard Countdown',
    summary:'Die ticking down by 1 per trigger. At 0, consequence fires.',
@@ -2037,18 +2037,18 @@ var RULES=[
   {id:'r-movement',cat:'Ranges',name:'Movement',summary:'Free move to Close range on your turn.',body:'On their turn, a character can move freely to Close range from their current position without spending an action.'},
   // ── Downtime ──
   {id:'r-short-rest',cat:'Downtime',name:'Short Rest',
-   summary:'Clear all Stress, repair armor. GM gains 1d4 Fear.',
-   body:'Clear all Stress, repair armor (clear all marked Armor Slots). Takes time in the fiction (1+ hours). GM gains 1d4 Fear.'},
+   summary:'Each PC picks 2 downtime moves (~1 hr). GM gains 1d4 Fear.',
+   body:'~1 hour in-fiction. Each PC picks 2 downtime moves (may repeat the same move): Tend to Wounds (clear 1d4+Tier HP for self or ally), Clear Stress (clear 1d4+Tier Stress), Repair Armor (clear 1d4+Tier Armor Slots for self or ally), Prepare (gain 1 Hope; 2 Hope if with 1+ party members). "Per rest" abilities refresh. Interrupted short rest grants no benefits. After 3 short rests in a row, the next rest must be a long rest. GM gains 1d4 Fear.'},
   {id:'r-long-rest',cat:'Downtime',name:'Long Rest',
-   summary:'Clear Stress, HP, armor, Vulnerable. GM gains Fear = PCs + 1d4.',
-   body:'Clear all Stress, all Hit Points, all marked Armor Slots. Remove Vulnerable condition. Takes a significant in-fiction rest (overnight or equivalent). GM gains Fear = (number of PCs + 1d4) and advances a long-term countdown.'},
+   summary:'Each PC picks 2 downtime moves (several hrs). GM gains Fear = PCs + 1d4.',
+   body:'Several in-game hours. Each PC picks 2 downtime moves (may repeat the same move): Tend to All Wounds (clear ALL HP for self or ally), Clear All Stress (clear ALL Stress), Repair All Armor (clear ALL Armor Slots for self or ally), Prepare (gain 1 Hope; 2 Hope if with 1+ party members), Work on a Project (advance a long-term project countdown). "Per rest" and "per long rest" abilities refresh. Interrupted long rest counts as a short rest. GM gains Fear = (number of PCs + 1d4) and can advance a long-term countdown.'},
   {id:'r-downtime-moves',cat:'Downtime',name:'Downtime Moves',
-   summary:'Good Night\'s Rest, Repair, Prepare, Work on a Project, etc.',
-   body:'Get a Good Night\'s Rest (clear stress/HP), Repair Your Equipment (restore armor slots and item features), Prepare (gain advantage on next related roll), Work on a Project (tick a progress countdown), or others as described in class features.'},
+   summary:'Each rest: 2 moves. Short = partial recovery. Long = full recovery + project.',
+   body:'Each PC chooses 2 downtime moves per rest and may pick the same move twice. Short Rest moves clear 1d4+Tier HP/Stress/Armor or grant Hope via Prepare. Long Rest moves clear ALL HP/Stress/Armor, grant Hope via Prepare, or advance a project via Work on a Project. Prepare always grants 1 Hope (or 2 Hope if at least one other party member also Prepares).'},
   // ── Death ──
   {id:'r-death-move',cat:'Death',name:'Death Move',
    summary:'When last HP marked: Blaze of Glory / Avoid Death / Risk It All.',
-   body:'When a PC marks their last Hit Point, they must immediately choose: Blaze of Glory (heroic death, critical-success action), Avoid Death (unconscious until healed; roll at next long rest for Scar), or Risk It All (roll Duality Dice — Hope higher: clear HP/Stress equal to Hope die; Fear higher: cross through death; Equal: clear all HP and Stress).'},
+   body:'When a PC marks their last Hit Point, they must immediately choose: Blaze of Glory (take one final auto-crit action, then die), Avoid Death (drop unconscious — can\'t move/act/be targeted; return when an ally clears 1+ of their HP or the party finishes a long rest; immediately roll Hope Die — if result ≤ character level, gain a Scar: permanently cross out one Hope slot), or Risk It All (roll Duality Dice — Hope higher: clear HP/Stress equal to Hope die value; Fear higher: cross through death; Matching results: clear all HP and Stress).'},
   {id:'r-scars',cat:'Death',name:'Scars',
    summary:'Cross out a Hope slot permanently. Retire if last slot lost.',
    body:'Cross out a Hope slot permanently. Can be narratively healed as a downtime project reward. If last Hope slot crossed out, retire the character.'},
@@ -2323,10 +2323,10 @@ function saveNoteCard(prefill){
   var notes=prefill?prefill.notes:(document.getElementById('ncf-notes').value.trim());
   if(!name){showToast('Name is required.');return;}
   var rec={
-    id:prefill?undefined:(_noteEditId||Date.now()+'_'+Math.random().toString(36).substr(2,4)),
+    id:prefill?undefined:(_noteEditId||Date.now()+'_'+Math.random().toString(36).slice(2,6)),
     type:type,name:name,notes:notes
   };
-  if(!rec.id)rec.id=Date.now()+'_'+Math.random().toString(36).substr(2,4);
+  if(!rec.id)rec.id=Date.now()+'_'+Math.random().toString(36).slice(2,6);
   if(!_noteEditId){rec.createdAt=new Date().toISOString();}
   db_put('toolkit_notes',rec).then(function(){
     showToast(_noteEditId?'Card updated.':'Card pinned.');
